@@ -174,3 +174,15 @@ class RecyclingCost(CostComponent):
 
     def calculate_cost(self):
         return self.amount
+
+
+class ReconstructionCost(CostComponent):
+    """Accounts for partial or complete reconstruction of the bridge due to structural failures or obsolescence."""
+
+    def _init_(self, demolition_cost, reconstruction_cost, reconstruction_carbon_cost, reconstruction_time_cost, reconstruction_roaduser_cost, reconstruction_rerouting_carbon_cost, design_life, discount_rate):
+        pwf = 1 / ((1 + discount_rate) ** design_life)
+        cost = (demolition_cost + reconstruction_cost + reconstruction_carbon_cost + reconstruction_time_cost + reconstruction_roaduser_cost + reconstruction_rerouting_carbon_cost) * pwf 
+        super()._init_(amount=cost, category="Economic", is_initial=False, is_recurring=False, present_worth_factor=pwf)
+
+    def calculate_cost(self):
+        return self.amount
