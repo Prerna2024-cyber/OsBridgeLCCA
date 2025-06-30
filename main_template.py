@@ -4,6 +4,8 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QTextEdit, QScrollArea
     QMenu, QMenuBar, QPushButton, QWidget, QLabel, QVBoxLayout, QGridLayout, QLineEdit, QComboBox)
 
 from widgets.title_bar import CustomTitleBar
+from widgets.project_details_right_widget import ProjectDetailsWidget
+from widgets.tutorial_widget_left import TutorialWidget
 
 class UiMainWindow(object):
     def setupUi(self, MainWindow):
