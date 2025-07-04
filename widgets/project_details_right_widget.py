@@ -1,4 +1,3 @@
-
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QCoreApplication, QSize, Qt, QPropertyAnimation, QEasingCurve, Signal
 from PySide6.QtGui import (QIcon)
@@ -389,6 +388,8 @@ class ProjectDetailsWidget(QWidget):
             "Maintenance and Repair",
             "Disposal and Recycling"
         ]
+        self.selected_icon = QIcon("resources/selected_icon.png")
+        self.param_buttons = []
         for label in button_labels:
             btn = QPushButton(f"   {label}")
             btn.setObjectName("parameter_button")
@@ -410,7 +411,9 @@ class ProjectDetailsWidget(QWidget):
                     background-color: #F0E6E6;
                 }
             """)
+            btn.clicked.connect(lambda checked, b=btn: self.select_param_button(b))
             self.input_param_option_layout.addWidget(btn)
+            self.param_buttons.append(btn)
         self.input_param_layout.addWidget(self.input_param_option_widget)
         scroll_content_layout.insertWidget(2, self.input_param_widget)
         self.output_button = QPushButton("   Outputs")
@@ -464,6 +467,13 @@ class ProjectDetailsWidget(QWidget):
             self.input_option_active = True
             self.input_param_button.setStyleSheet(self.input_param_button_css_active)
             self.input_param_button.setIcon(self.input_param_active_icon)
+
+    def select_param_button(self, selected_btn):
+        for btn in self.param_buttons:
+            if btn == selected_btn:
+                btn.setIcon(self.selected_icon)
+            else:
+                btn.setIcon(QIcon("resources/play-button-arrowhead.png"))
 
     def close_widget(self):
         self.closed.emit()
