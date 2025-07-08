@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import QCoreApplication, Qt, QSize, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import QCoreApplication, Qt, QSize, QPropertyAnimation, QEasingCurve, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QTextEdit, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy)
 from PySide6.QtGui import QIcon, QTextDocument
 import sys
@@ -11,6 +11,7 @@ from widgets.structure_works_data.auxiliary_works_widget import AuxiliaryWorks
 from PySide6.QtWidgets import QStackedWidget
 
 class ProjectDetailsLeft(QWidget):
+    closed = Signal()
     """
     The main application window that uses a custom title bar.
     """
@@ -168,6 +169,7 @@ class ProjectDetailsLeft(QWidget):
         top_button_left_panel.setIconSize(QSize(13, 13))
         top_button_left_panel.setObjectName("top_button_left_panel")
         top_button_left_panel.setLayoutDirection(Qt.RightToLeft)
+        top_button_left_panel.clicked.connect(self.close_widget)
         top_h_layout_left_panel.addWidget(top_button_left_panel, 2)
         top_h_layout_left_panel.addStretch(1)
         left_panel_vlayout.addLayout(top_h_layout_left_panel)
@@ -367,3 +369,7 @@ class ProjectDetailsLeft(QWidget):
     def show_structure_widget(self, name, btn):
         self.parent.show_project_detail_widgets(name)
         self.handle_button_selection(btn)
+
+    def close_widget(self):
+        self.closed.emit()
+        self.setParent(None)

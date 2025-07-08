@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import QCoreApplication, Qt, QSize
+from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
 from PySide6.QtGui import QIcon
 import sys
@@ -211,6 +211,7 @@ class ComponentWidget(QWidget):
         self.adjustSize() # Adjust the size of the component widget
 
 class Foundation(QWidget):
+    closed = Signal()
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("central_panel_widget")
@@ -418,6 +419,7 @@ class Foundation(QWidget):
         top_button_left_panel.setIcon(QIcon("resources/close.png"))
         top_button_left_panel.setIconSize(QSize(13, 13))
         top_button_left_panel.setObjectName("top_button_left_panel")
+        top_button_left_panel.clicked.connect(self.close_widget)
         top_button_left_panel.setLayoutDirection(Qt.RightToLeft)
         top_h_layout_left_panel.addWidget(top_button_left_panel)
 
@@ -497,6 +499,10 @@ class Foundation(QWidget):
 
     def expand_scroll_area(self):
         self.central_widget.layout().invalidate()
+
+    def close_widget(self):
+        self.closed.emit()
+        self.setParent(None)
 
 #----------------Standalone-Test-Code--------------------------------
 

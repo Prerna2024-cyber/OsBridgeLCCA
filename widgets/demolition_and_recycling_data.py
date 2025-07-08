@@ -1,11 +1,12 @@
 from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import QCoreApplication, Qt, QSize
+from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
 from PySide6.QtGui import QIcon
 import sys
 import os
 
 class DemolitionAndRecyclingData(QWidget):
+    closed = Signal()
     def __init__(self, parent=None):
         super().__init__()
 
@@ -138,6 +139,7 @@ class DemolitionAndRecyclingData(QWidget):
         top_button_left_panel.setIcon(QIcon("resources/close.png"))
         top_button_left_panel.setIconSize(QSize(13, 13))
         top_button_left_panel.setObjectName("top_button_left_panel")
+        top_button_left_panel.clicked.connect(self.close_widget)
         top_button_left_panel.setLayoutDirection(Qt.RightToLeft)
         top_h_layout_left_panel.addWidget(top_button_left_panel)
 
@@ -278,6 +280,10 @@ class DemolitionAndRecyclingData(QWidget):
 
         left_panel_vlayout.addWidget(self.scroll_area)
 
+    def close_widget(self):
+        self.closed.emit()
+        self.setParent(None)
+
 #----------------Standalone-Test-Code--------------------------------
 
 class MyMainWindow(QMainWindow):
@@ -297,10 +303,6 @@ class MyMainWindow(QMainWindow):
 
         self.setWindowState(Qt.WindowMaximized)
 
-
-if __name__ == "__main__":
-    QCoreApplication.setAttribute(Qt.AA_DontShowIconsInMenus, False)
-    app = QApplication(sys.argv)
-    window = MyMainWindow()
-    window.show()
-    sys.exit(app.exec())
+    def close_widget(self):
+        self.closed.emit()
+        self.setParent(None)

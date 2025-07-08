@@ -398,11 +398,11 @@ class UiMainWindow(object):
                 self.current_left_widget = ProjectDetailsLeft(self.widget_map, parent=self)
                 self.current_left_widget.handle_button_selection(button_name=widget_name)
                 self.left_panel_placeholder.layout().addWidget(self.current_left_widget)
+                self.current_left_widget.closed.connect(lambda: self.remove_left_widget())
             else:
                 self.current_right_widget = ProjectDetailsWidget()
             self.right_panel_placeholder.layout().addWidget(self.current_right_widget)
-            if hasattr(self.current_right_widget, 'closed'):
-                self.current_right_widget.closed.connect(lambda: self.remove_right_widget())
+            self.current_right_widget.closed.connect(lambda: self.remove_right_widget())
             # Connect param_buttons if present
             if hasattr(self.current_right_widget, 'param_buttons'):
                 for btn in self.current_right_widget.param_buttons:

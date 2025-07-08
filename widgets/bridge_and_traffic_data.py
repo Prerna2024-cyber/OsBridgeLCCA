@@ -6,6 +6,7 @@ import sys
 import os
 
 class BridgeAndTrafficData(QWidget):
+    closed = Signal()
     def __init__(self, parent=None):
         super().__init__()
         self.text_box_width = 200
@@ -166,6 +167,7 @@ class BridgeAndTrafficData(QWidget):
         top_button_left_panel.setIcon(QIcon("resources/close.png"))
         top_button_left_panel.setIconSize(QSize(13, 13))
         top_button_left_panel.setObjectName("top_button_left_panel")
+        top_button_left_panel.clicked.connect(self.close_widget)
         top_button_left_panel.setLayoutDirection(Qt.RightToLeft)
         top_h_layout_left_panel.addWidget(top_button_left_panel)
 
@@ -387,6 +389,10 @@ class BridgeAndTrafficData(QWidget):
         self.scroll_content_layout.addSpacerItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         left_panel_vlayout.addWidget(self.scroll_area)
+    
+    def close_widget(self):
+        self.closed.emit()
+        self.setParent(None)
 
 #----------------Standalone-Test-Code--------------------------------
 

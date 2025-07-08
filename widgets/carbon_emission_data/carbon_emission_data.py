@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import QCoreApplication, Qt, QSize
+from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
 from PySide6.QtGui import QIcon
 import sys
@@ -33,10 +33,7 @@ class ComponentWidget(QWidget):
                self.material_grid_layout.addWidget(label, 0, col, alignment=Qt.AlignmentFlag.AlignRight)
             else: 
 
-               self.material_grid_layout.addWidget(label, 0, col, alignment=Qt.AlignmentFlag.AlignCenter) 
-               
-              
-           
+               self.material_grid_layout.addWidget(label, 0, col, alignment=Qt.AlignmentFlag.AlignCenter)   
 
         self.component_first_scroll_content_layout.addLayout(self.material_grid_layout)
     
@@ -189,6 +186,7 @@ class ComponentWidget(QWidget):
         self.adjustSize()
 
 class CarbonEmissionData(QWidget):
+    closed = Signal()
     def __init__(self):
         super().__init__()
 
@@ -400,6 +398,7 @@ class CarbonEmissionData(QWidget):
         top_button_left_panel.setIcon(QIcon("resources/close.png"))
         top_button_left_panel.setIconSize(QSize(13, 13))
         top_button_left_panel.setObjectName("top_button_left_panel")
+        top_button_left_panel.clicked.connect(self.close_widget)
         top_button_left_panel.setLayoutDirection(Qt.RightToLeft)
         top_h_layout_left_panel.addWidget(top_button_left_panel)
 
@@ -489,6 +488,10 @@ class CarbonEmissionData(QWidget):
 
     def expand_scroll_area(self):
         self.central_widget.layout().invalidate()   
+
+    def close_widget(self):
+        self.closed.emit()
+        self.setParent(None)
 
 #----------------Standalone-Test-Code--------------------------------
 

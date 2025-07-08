@@ -210,7 +210,7 @@ class ComponentWidget(QWidget):
         self.adjustSize() # Adjust the size of the component widget
 
 class SubStructure(QWidget):
-    close = Signal()
+    closed = Signal()
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
@@ -419,6 +419,7 @@ class SubStructure(QWidget):
         top_button_left_panel.setIcon(QIcon("resources/close.png"))
         top_button_left_panel.setIconSize(QSize(13, 13))
         top_button_left_panel.setObjectName("top_button_left_panel")
+        top_button_left_panel.clicked.connect(self.close_widget)
         top_button_left_panel.setLayoutDirection(Qt.RightToLeft)
         top_button_left_panel.setCursor(Qt.CursorShape.PointingHandCursor)
         top_h_layout_left_panel.addWidget(top_button_left_panel)
