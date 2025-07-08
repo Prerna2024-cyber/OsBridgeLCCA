@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import QCoreApplication, Qt, QSize
+from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
 from PySide6.QtGui import QIcon
 import sys
@@ -38,7 +38,6 @@ class ComponentWidget(QWidget):
                 border: 1px solid #FF9999;
                 border-radius: 12px;
                 font-weight: bold;
-                line-height:12px;
                 color: #CC0000;
             }
             QPushButton:hover {
@@ -140,7 +139,6 @@ class ComponentWidget(QWidget):
                 border: 1px solid #FF9999;
                 border-radius: 12px;
                 font-weight: bold;
-                line-height:12px;
                 color: #CC0000;
             }
             QPushButton:hover {
@@ -149,6 +147,7 @@ class ComponentWidget(QWidget):
             }
             QPushButton:pressed {
                 background-color: #FF6666;
+                color: white;
             }
         """)
         remove_button.clicked.connect(lambda: self.remove_material_row_by_widgets(row_widgets))
@@ -211,8 +210,10 @@ class ComponentWidget(QWidget):
         self.adjustSize() # Adjust the size of the component widget
 
 class SubStructure(QWidget):
+    close = Signal()
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.parent = parent
         self.setObjectName("central_panel_widget")
         self.component_widgets = [] # To store references to each ComponentWidget instance
         self.setStyleSheet("""
@@ -419,6 +420,7 @@ class SubStructure(QWidget):
         top_button_left_panel.setIconSize(QSize(13, 13))
         top_button_left_panel.setObjectName("top_button_left_panel")
         top_button_left_panel.setLayoutDirection(Qt.RightToLeft)
+        top_button_left_panel.setCursor(Qt.CursorShape.PointingHandCursor)
         top_h_layout_left_panel.addWidget(top_button_left_panel)
 
         top_h_layout_left_panel.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Preferred))
@@ -497,6 +499,10 @@ class SubStructure(QWidget):
 
     def expand_scroll_area(self):
         self.central_widget.layout().invalidate()
+    
+    def close_widget(self):
+        self.closed.emit()
+        self.setParent(None)
 
 #----------------Standalone-Test-Code--------------------------------
 

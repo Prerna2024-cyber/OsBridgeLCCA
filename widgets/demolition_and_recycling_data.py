@@ -6,7 +6,7 @@ import sys
 import os
 
 class DemolitionAndRecyclingData(QWidget):
-    def __init__(self):
+    def __init__(self, parent=None):
         super().__init__()
 
         self.setStyleSheet("""

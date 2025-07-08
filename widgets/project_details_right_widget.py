@@ -386,7 +386,7 @@ class ProjectDetailsWidget(QWidget):
             "Carbon Emission Data",
             "Bridge and Traffic Data",
             "Maintenance and Repair",
-            "Disposal and Recycling"
+            "Demolition and Recycling"
         ]
         self.selected_icon = QIcon("resources/selected_icon.png")
         self.param_buttons = []

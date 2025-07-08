@@ -5,7 +5,7 @@ from PySide6.QtGui import QIcon
 import sys
 
 class ComponentWidget(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent):
         super().__init__(parent)
 
         self.material_rows = [] # To store references to widgets in each material row

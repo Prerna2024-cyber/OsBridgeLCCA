@@ -4,13 +4,20 @@ from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QTextEdit, QWidget, QLa
 from PySide6.QtGui import QIcon, QTextDocument
 import sys
 import os
+from widgets.structure_works_data.foundation_widget import Foundation
+from widgets.structure_works_data.super_structure_widget import SuperStructure
+from widgets.structure_works_data.sub_structure_widget import SubStructure
+from widgets.structure_works_data.auxiliary_works_widget import AuxiliaryWorks
+from PySide6.QtWidgets import QStackedWidget
 
 class ProjectDetailsLeft(QWidget):
     """
     The main application window that uses a custom title bar.
     """
-    def __init__(self):
+    def __init__(self, widget_map, parent=None):
         super().__init__()
+        self.widget_map = widget_map
+        self.parent = parent
 
         self.current_selected_button = None
         self.all_param_buttons = []
@@ -86,6 +93,7 @@ class ProjectDetailsLeft(QWidget):
             QPushButton#top_button_left_panel {
                 background-color: #F0E6E6;
                 border: 1px solid #000000;
+                border-bottom: none;
                 text-align: left;
                 padding: 4px 10px;
                 color: #000000;        
@@ -127,7 +135,7 @@ class ProjectDetailsLeft(QWidget):
                 background-color: #2A3F54;
                 color: #FFFFFF;
             }
-            QPushButton.subcategory_button { 
+            QPushButton.subcategory_button {
                 background-color: transparent;
                 border: none;
                 text-align: left;
@@ -228,7 +236,7 @@ class ProjectDetailsLeft(QWidget):
             btn.setLayoutDirection(Qt.LeftToRight)
             btn.setIcon(unselected_unexpanded_icon)
             btn.setIconSize(QSize(10, 10))
-            btn.clicked.connect(lambda checked, b=btn: self.handle_button_selection(b))
+            btn.clicked.connect(lambda checked ,b=btn ,name=label: self.show_structure_widget(name, b))
             scroll_content_layout.addWidget(btn)
             self.all_param_buttons.append(btn)
             if sublabels:
@@ -242,7 +250,7 @@ class ProjectDetailsLeft(QWidget):
                     sub_btn.setCursor(Qt.CursorShape.PointingHandCursor)
                     sub_btn.setLayoutDirection(Qt.LeftToRight)
                     sub_btn.setVisible(False)
-                    sub_btn.clicked.connect(lambda checked, b=sub_btn: self.handle_button_selection(b))
+                    sub_btn.clicked.connect(lambda checked ,b=sub_btn, name=sublabel: self.show_structure_widget(name,b))
                     scroll_content_layout.addWidget(sub_btn)
                     sub_widgets.append(sub_btn)
                     self.all_param_buttons.append(sub_btn)
@@ -311,7 +319,7 @@ class ProjectDetailsLeft(QWidget):
         """)
         left_panel_vlayout.addWidget(scroll_area)
     
-    def handle_button_selection(self, button_clicked):
+    def handle_button_selection(self, button_clicked=None, button_name=None):
         """
         Handles the visual selection state of buttons in the side panel.
         """
@@ -323,6 +331,12 @@ class ProjectDetailsLeft(QWidget):
                 b.setIcon(QIcon("resources/play-button-arrowhead.png"))
             else:
                 self.update_button_icon(b)
+            
+            if button_name:
+                if b.text() == button_name:
+                    button_clicked = b
+                    button_clicked.click()
+
         button_clicked.setProperty("selected", True)
         button_clicked.style().unpolish(button_clicked)
         button_clicked.style().polish(button_clicked)
@@ -350,30 +364,6 @@ class ProjectDetailsLeft(QWidget):
             button.setIcon(QIcon("resources/play-button-arrowhead.png"))
         button.setIconSize(QSize(10, 10))
 
-#----------------Standalone-Test-Code--------------------------------
-
-# class MyMainWindow(QMainWindow):
-#     def __init__(self):
-#         super().__init__()
-
-#         self.setStyleSheet("border: none")
-
-#         self.central_widget = QWidget()
-#         self.central_widget.setObjectName("central_widget")
-#         self.setCentralWidget(self.central_widget)
-
-#         self.main_h_layout = QHBoxLayout(self.central_widget)
-
-#         self.main_h_layout.addWidget(ProjectDetailsLeft(), 1)
-
-#         self.main_h_layout.addStretch(5)
-
-#         self.setWindowState(Qt.WindowMaximized)
-
-
-# if __name__ == "__main__":
-#     QCoreApplication.setAttribute(Qt.AA_DontShowIconsInMenus, False)
-#     app = QApplication(sys.argv)
-#     window = MyMainWindow()
-#     window.show()
-#     sys.exit(app.exec())
+    def show_structure_widget(self, name, btn):
+        self.parent.show_project_detail_widgets(name)
+        self.handle_button_selection(btn)

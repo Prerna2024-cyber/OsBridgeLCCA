@@ -6,6 +6,19 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QTextEdit, QScrollArea
 from widgets.title_bar import CustomTitleBar
 from widgets.project_details_right_widget import ProjectDetailsWidget
 from widgets.tutorial_widget_left import TutorialWidget
+from widgets.structure_works_data.foundation_widget import Foundation
+from widgets.structure_works_data.super_structure_widget import SuperStructure
+from widgets.structure_works_data.sub_structure_widget import SubStructure
+from widgets.structure_works_data.auxiliary_works_widget import AuxiliaryWorks
+from widgets.financial_data import FinancialData
+from widgets.carbon_emission_data.carbon_emission_data import CarbonEmissionData
+from widgets.carbon_emission_data.carbon_emission_cost_data import CarbonEmissionCostData
+from widgets.bridge_and_traffic_data import BridgeAndTrafficData
+from widgets.maintenance_repair_data import MaintenanceRepairData
+from widgets.demolition_and_recycling_data import DemolitionAndRecyclingData
+from widgets.project_details_left_widget import ProjectDetailsLeft
+
+from PySide6.QtWidgets import QStackedWidget
 
 class UiMainWindow(object):
     def setupUi(self, MainWindow):
@@ -31,7 +44,7 @@ class UiMainWindow(object):
         # Set window stylesheet
         MainWindow.setStyleSheet("""
             QMainWindow {
-                border: 1px solid #285A23;
+                border: none;
             }
             QMenuBar {
                 background-color: #FAFAFA;
@@ -81,6 +94,8 @@ class UiMainWindow(object):
 
         # Create a central widget and main layout for the window
         self.central_widget = QWidget()
+        self.central_widget.setStyleSheet("border: none;")
+        self.central_widget.setObjectName("central_widget")
         MainWindow.setCentralWidget(self.central_widget)
         main_layout = QVBoxLayout(self.central_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -156,9 +171,9 @@ class UiMainWindow(object):
         self.main_content_area.setStyleSheet("""
             #main_content_area {
                 background-color: #FAFAFA;
-                border-left: 1px solid #285A23;
-                border-right: 1px solid #285A23;
-                border-bottom: 1px solid #285A23;
+                border: 1px solid #285A23;
+                border-top: 1px solid #BBBBBB;
+                
             }
             QLabel {
                 color: #9F8888;
@@ -359,14 +374,39 @@ class UiMainWindow(object):
             self.left_panel_placeholder.layout().addWidget(self.current_left_widget)
             self.current_left_widget.closed.connect(lambda: self.remove_left_widget())
 
-        def show_project_details_widget():
+        def show_project_details_widget(widget_name=None):
             if self.current_right_widget:
                 self.right_panel_placeholder.layout().removeWidget(self.current_right_widget)
                 self.current_right_widget.setParent(None)
-            self.current_right_widget = ProjectDetailsWidget()
+            self.widget_map = {
+                "Structure Works Data": Foundation,
+                "Foundation": Foundation,
+                "Super-Structure": SuperStructure,
+                "Sub-Structure": SubStructure,
+                "Miscellaneous": AuxiliaryWorks,
+                "Financial Data": FinancialData,
+                "Carbon Emission Data": CarbonEmissionData,
+                "Carbon Emission Cost Data": CarbonEmissionCostData,
+                "Bridge and Traffic Data": BridgeAndTrafficData,
+                "Maintenance and Repair": MaintenanceRepairData,
+                "Demolition and Recycling": DemolitionAndRecyclingData
+            }
+            if widget_name and widget_name in self.widget_map:
+                self.current_right_widget = self.widget_map[widget_name]()
+                self.remove_left_widget()
+                self.detail_stack = QStackedWidget()
+                self.current_left_widget = ProjectDetailsLeft(self.widget_map, parent=self)
+                self.current_left_widget.handle_button_selection(button_name=widget_name)
+                self.left_panel_placeholder.layout().addWidget(self.current_left_widget)
+            else:
+                self.current_right_widget = ProjectDetailsWidget()
             self.right_panel_placeholder.layout().addWidget(self.current_right_widget)
-            self.current_right_widget.closed.connect(lambda: self.remove_right_widget())
-
+            if hasattr(self.current_right_widget, 'closed'):
+                self.current_right_widget.closed.connect(lambda: self.remove_right_widget())
+            # Connect param_buttons if present
+            if hasattr(self.current_right_widget, 'param_buttons'):
+                for btn in self.current_right_widget.param_buttons:
+                    btn.clicked.connect(lambda checked, b=btn: show_project_details_widget(b.text().strip()))
         def remove_right_widget():
             if self.current_right_widget:
                 self.right_panel_placeholder.layout().removeWidget(self.current_right_widget)
@@ -382,7 +422,13 @@ class UiMainWindow(object):
         self.remove_left_widget = remove_left_widget
 
         self.tutorial_tab.clicked.connect(show_tutorial_widget)
-        self.project_details_tab.clicked.connect(show_project_details_widget)
-
-    # Remove expand_general_area and input_button_toggle methods from UiMainWindow
-            
+        self.project_details_tab.clicked.connect(lambda: show_project_details_widget())
+    
+    def show_project_detail_widgets(self, widget_name):
+        if self.current_right_widget:
+            self.right_panel_placeholder.layout().removeWidget(self.current_right_widget)
+            self.current_right_widget.setParent(None)
+        if widget_name and widget_name in self.widget_map:
+            self.current_right_widget = self.widget_map[widget_name]()
+            self.right_panel_placeholder.layout().addWidget(self.current_right_widget)
+        

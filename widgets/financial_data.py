@@ -6,7 +6,7 @@ import sys
 import os
 
 class FinancialData(QWidget):
-    def __init__(self):
+    def __init__(self, parent=None):
         super().__init__()
 
         self.setStyleSheet("""
@@ -290,27 +290,27 @@ class FinancialData(QWidget):
 
 #----------------Standalone-Test-Code--------------------------------
 
-# class MyMainWindow(QMainWindow):
-#     def __init__(self):
-#         super().__init__()
+class MyMainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
 
-#         self.setStyleSheet("border: none")
+        self.setStyleSheet("border: none")
 
-#         self.central_widget = QWidget()
-#         self.central_widget.setObjectName("central_widget")
-#         self.setCentralWidget(self.central_widget)
+        self.central_widget = QWidget()
+        self.central_widget.setObjectName("central_widget")
+        self.setCentralWidget(self.central_widget)
 
-#         self.main_h_layout = QHBoxLayout(self.central_widget)
-#         self.main_h_layout.addStretch(1)
+        self.main_h_layout = QHBoxLayout(self.central_widget)
+        self.main_h_layout.addStretch(1)
 
-#         self.main_h_layout.addWidget(FinancialData(), 2)
+        self.main_h_layout.addWidget(FinancialData(), 2)
 
-#         self.setWindowState(Qt.WindowMaximized)
+        self.setWindowState(Qt.WindowMaximized)
 
 
-# if __name__ == "__main__":
-#     QCoreApplication.setAttribute(Qt.AA_DontShowIconsInMenus, False)
-#     app = QApplication(sys.argv)
-#     window = MyMainWindow()
-#     window.show()
-#     sys.exit(app.exec())
+if __name__ == "__main__":
+    QCoreApplication.setAttribute(Qt.AA_DontShowIconsInMenus, False)
+    app = QApplication(sys.argv)
+    window = MyMainWindow()
+    window.show()
+    sys.exit(app.exec())

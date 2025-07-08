@@ -19,7 +19,7 @@ class ComponentWidget(QWidget):
 
 
 class MaintenanceRepairData(QWidget):
-    def __init__(self):
+    def __init__(self, parent=None):
         super().__init__()
 
         self.component_widgets = []

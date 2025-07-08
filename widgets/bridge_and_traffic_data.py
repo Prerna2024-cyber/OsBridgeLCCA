@@ -1,12 +1,12 @@
 from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import QCoreApplication, Qt, QSize
+from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
 from PySide6.QtGui import QIcon
 import sys
 import os
 
 class BridgeAndTrafficData(QWidget):
-    def __init__(self):
+    def __init__(self, parent=None):
         super().__init__()
         self.text_box_width = 200
         self.setStyleSheet("""
@@ -161,7 +161,7 @@ class BridgeAndTrafficData(QWidget):
         left_panel_vlayout.setSpacing(0)
 
         top_h_layout_left_panel = QHBoxLayout()
-        top_button_left_panel = QPushButton("Carbon Emission Cost Data    ")
+        top_button_left_panel = QPushButton("Bridge and Traffic Data    ")
         top_h_layout_left_panel.addWidget(top_button_left_panel)
         top_button_left_panel.setIcon(QIcon("resources/close.png"))
         top_button_left_panel.setIconSize(QSize(13, 13))
@@ -387,7 +387,6 @@ class BridgeAndTrafficData(QWidget):
         self.scroll_content_layout.addSpacerItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         left_panel_vlayout.addWidget(self.scroll_area)
-
 
 #----------------Standalone-Test-Code--------------------------------
 
