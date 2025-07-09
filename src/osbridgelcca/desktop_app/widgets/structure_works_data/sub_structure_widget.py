@@ -38,6 +38,7 @@ class ComponentWidget(QWidget):
                 border: 1px solid #FF9999;
                 border-radius: 12px;
                 font-weight: bold;
+                padding: 0px;
                 color: #CC0000;
             }
             QPushButton:hover {
@@ -139,6 +140,7 @@ class ComponentWidget(QWidget):
                 border: 1px solid #FF9999;
                 border-radius: 12px;
                 font-weight: bold;
+                padding: 0px;
                 color: #CC0000;
             }
             QPushButton:hover {
