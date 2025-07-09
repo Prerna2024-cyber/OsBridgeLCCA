@@ -1,3 +1,9 @@
+"""
+<Author>: Prerna Praveen Vidyarthi
+<Intern>: FOSSEE Summer Fellowship 2025
+<Github>: https://github.com/prerna2024-cyber
+<Email>: vidyarthiprerna637@gmail.com
+"""
 from PySide6.QtCore import (QSize, Qt, QPropertyAnimation, QEasingCurve)
 from PySide6.QtGui import (QAction,QFont, QFontDatabase, QIcon)
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QTextEdit, QScrollArea, QSpacerItem, QSizePolicy,
