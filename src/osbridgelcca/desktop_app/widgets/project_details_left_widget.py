@@ -15,7 +15,7 @@ class ProjectDetailsLeft(QWidget):
     """
     The main application window that uses a custom title bar.
     """
-    def __init__(self, widget_map, parent=None):
+    def __init__(self, widget_map, parent):
         super().__init__()
         self.widget_map = widget_map
         self.parent = parent

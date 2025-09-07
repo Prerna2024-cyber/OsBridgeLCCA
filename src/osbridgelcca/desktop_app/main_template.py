@@ -23,11 +23,30 @@ from widgets.bridge_and_traffic_data import BridgeAndTrafficData
 from widgets.maintenance_repair_data import MaintenanceRepairData
 from widgets.demolition_and_recycling_data import DemolitionAndRecyclingData
 from widgets.project_details_left_widget import ProjectDetailsLeft
+from widgets.tab_widget import CustomTabWidget
 
 from PySide6.QtWidgets import QStackedWidget
 
 class UiMainWindow(object):
     def setupUi(self, MainWindow):
+        # To check if tab widget is there or no
+        self.tabs_active = False
+        # Contains name of widget and its index in tabs
+        self.active_tab_widgets = {}
+        self.widget_map = {
+            "Structure Works Data": Foundation,
+            "Foundation": Foundation,
+            "Super-Structure": SuperStructure,
+            "Sub-Structure": SubStructure,
+            "Miscellaneous": AuxiliaryWorks,
+            "Financial Data": FinancialData,
+            "Carbon Emission Data": CarbonEmissionData,
+            "Carbon Emission Cost Data": CarbonEmissionCostData,
+            "Bridge and Traffic Data": BridgeAndTrafficData,
+            "Maintenance and Repair": MaintenanceRepairData,
+            "Demolition and Recycling": DemolitionAndRecyclingData
+        }
+
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
 
@@ -381,38 +400,45 @@ class UiMainWindow(object):
             self.current_left_widget.closed.connect(lambda: self.remove_left_widget())
 
         def show_project_details_widget(widget_name=None):
-            if self.current_right_widget:
-                self.right_panel_placeholder.layout().removeWidget(self.current_right_widget)
-                self.current_right_widget.setParent(None)
-            self.widget_map = {
-                "Structure Works Data": Foundation,
-                "Foundation": Foundation,
-                "Super-Structure": SuperStructure,
-                "Sub-Structure": SubStructure,
-                "Miscellaneous": AuxiliaryWorks,
-                "Financial Data": FinancialData,
-                "Carbon Emission Data": CarbonEmissionData,
-                "Carbon Emission Cost Data": CarbonEmissionCostData,
-                "Bridge and Traffic Data": BridgeAndTrafficData,
-                "Maintenance and Repair": MaintenanceRepairData,
-                "Demolition and Recycling": DemolitionAndRecyclingData
-            }
-            if widget_name and widget_name in self.widget_map:
-                self.current_right_widget = self.widget_map[widget_name]()
+            if widget_name and widget_name in self.widget_map:                
+                # Tabs are already visible
+                if self.tabs_active:
+                    if self.active_tab_widgets.get(widget_name) is not None:
+                        # change active tab to that tab
+                        index = self.active_tab_widgets[widget_name]
+                        self.current_right_widget.activate_tab(index)
+                else:
+                    # Flush active tabs
+                    self.remove_right_widget()
+                    self.active_tab_widgets = {}
+                    self.tabs_active = True
+                    self.current_right_widget = CustomTabWidget(parent=self)
+                    # Add Tab widget
+                    self.right_panel_placeholder.layout().addWidget(self.current_right_widget)
+
+                # Remove left widget first
                 self.remove_left_widget()
-                self.detail_stack = QStackedWidget()
+                # Create left panel
                 self.current_left_widget = ProjectDetailsLeft(self.widget_map, parent=self)
-                self.current_left_widget.handle_button_selection(button_name=widget_name)
                 self.left_panel_placeholder.layout().addWidget(self.current_left_widget)
                 self.current_left_widget.closed.connect(lambda: self.remove_left_widget())
+                self.current_left_widget.handle_button_selection(button_name=widget_name)
             else:
+                # Switch to normal widget mode
+                if self.current_right_widget:
+                    self.right_panel_placeholder.layout().removeWidget(self.current_right_widget)
+                    self.current_right_widget.setParent(None)
+                self.tabs_active = False
+                self.active_tab_widgets = {}  # Clear tab tracking
                 self.current_right_widget = ProjectDetailsWidget()
-            self.right_panel_placeholder.layout().addWidget(self.current_right_widget)
-            self.current_right_widget.closed.connect(lambda: self.remove_right_widget())
+                self.right_panel_placeholder.layout().addWidget(self.current_right_widget)
+                self.current_right_widget.closed.connect(lambda: self.remove_right_widget())
+                
             # Connect param_buttons if present
             if hasattr(self.current_right_widget, 'param_buttons'):
                 for btn in self.current_right_widget.param_buttons:
                     btn.clicked.connect(lambda checked, b=btn: show_project_details_widget(b.text().strip()))
+                    
         def remove_right_widget():
             if self.current_right_widget:
                 self.right_panel_placeholder.layout().removeWidget(self.current_right_widget)
@@ -431,10 +457,17 @@ class UiMainWindow(object):
         self.project_details_tab.clicked.connect(lambda: show_project_details_widget())
     
     def show_project_detail_widgets(self, widget_name):
-        if self.current_right_widget:
-            self.right_panel_placeholder.layout().removeWidget(self.current_right_widget)
-            self.current_right_widget.setParent(None)
+        """Public method to show project detail widgets"""
         if widget_name and widget_name in self.widget_map:
-            self.current_right_widget = self.widget_map[widget_name]()
-            self.right_panel_placeholder.layout().addWidget(self.current_right_widget)
-        
+            # Tabs are already visible
+            if self.tabs_active:
+                if self.active_tab_widgets.get(widget_name) is not None:
+                    # change active tab to that tab
+                    index = self.active_tab_widgets[widget_name]
+                    self.current_right_widget.activate_tab(index)
+                else:
+                    # add new tab
+                    widget = self.widget_map[widget_name]()
+                    index = self.current_right_widget.add_new_tab(widget, widget_name)
+                    # add record of this widget
+                    self.active_tab_widgets[widget_name] = index

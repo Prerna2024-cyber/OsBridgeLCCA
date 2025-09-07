@@ -415,19 +415,6 @@ class Foundation(QWidget):
         left_panel_vlayout.setContentsMargins(0, 0, 0, 0)
         left_panel_vlayout.setSpacing(0)
 
-        top_h_layout_left_panel = QHBoxLayout()
-        top_button_left_panel = QPushButton("Foundation")
-        top_h_layout_left_panel.addWidget(top_button_left_panel)
-        top_button_left_panel.setIcon(QIcon("resources/close.png"))
-        top_button_left_panel.setIconSize(QSize(13, 13))
-        top_button_left_panel.setObjectName("top_button_left_panel")
-        top_button_left_panel.clicked.connect(self.close_widget)
-        top_button_left_panel.setLayoutDirection(Qt.RightToLeft)
-        top_h_layout_left_panel.addWidget(top_button_left_panel)
-
-        top_h_layout_left_panel.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Preferred))
-        left_panel_vlayout.addLayout(top_h_layout_left_panel)
-
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
