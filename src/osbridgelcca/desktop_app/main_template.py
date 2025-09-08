@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QTextEdit, QScrollArea
 from widgets.title_bar import CustomTitleBar
 from widgets.project_details_right_widget import ProjectDetailsWidget
 from widgets.tutorial_widget_left import TutorialWidget
+from widgets.results_widget import ResultsWidget
+from widgets.comparison_widget import ComparisonWidget
 from widgets.structure_works_data.foundation_widget import Foundation
 from widgets.structure_works_data.super_structure_widget import SuperStructure
 from widgets.structure_works_data.sub_structure_widget import SubStructure
@@ -375,7 +377,7 @@ class UiMainWindow(object):
         """)
         # ------------------------------------------------------------
         body_layout = QHBoxLayout(body_widget)
-        body_layout.setSpacing(40)
+        body_layout.setSpacing(20)
 
         # Placeholders for dynamic widgets
         self.left_panel_placeholder = QWidget()
@@ -398,6 +400,26 @@ class UiMainWindow(object):
             self.current_left_widget = TutorialWidget()
             self.left_panel_placeholder.layout().addWidget(self.current_left_widget)
             self.current_left_widget.closed.connect(lambda: self.remove_left_widget())
+
+        def show_results_widget():
+            if self.current_right_widget:
+                self.right_panel_placeholder.layout().removeWidget(self.current_right_widget)
+                self.current_right_widget.setParent(None)
+            self.current_right_widget = ResultsWidget()
+            self.right_panel_placeholder.layout().addWidget(self.current_right_widget)
+            self.current_right_widget.closed.connect(lambda: self.remove_right_widget())
+            print("results widget")
+        self.results_tab.clicked.connect(show_results_widget)
+
+        def show_comparison_widget():
+            if self.current_right_widget:
+                self.right_panel_placeholder.layout().removeWidget(self.current_right_widget)
+                self.current_right_widget.setParent(None)
+            self.current_right_widget = ComparisonWidget()
+            self.right_panel_placeholder.layout().addWidget(self.current_right_widget)
+            self.current_right_widget.closed.connect(lambda: self.remove_right_widget())
+            print("comparison widget")
+        self.compare.clicked.connect(show_comparison_widget)
 
         def show_project_details_widget(widget_name=None):
             if widget_name and widget_name in self.widget_map:                
