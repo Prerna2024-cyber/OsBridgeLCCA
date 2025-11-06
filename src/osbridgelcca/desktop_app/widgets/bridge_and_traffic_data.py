@@ -2,13 +2,21 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
 from PySide6.QtGui import QIcon
+from .utils.data import *
 import sys
 import os
 
 class BridgeAndTrafficData(QWidget):
     closed = Signal()
-    def __init__(self, parent=None):
+    next = Signal(str)
+    back = Signal(str)
+    def __init__(self, database, parent=None):
         super().__init__()
+        self.parent = parent
+        self.database_manager = database
+        self.data = bridge_traffic_data.get(KEY_BRIDGE_TRAFFIC)
+        self.traffic_widgets = []
+
         self.text_box_width = 200
         self.setStyleSheet("""
             #central_panel_widget {
@@ -130,10 +138,12 @@ class BridgeAndTrafficData(QWidget):
             QComboBox {
                 border: 1px solid #DDDCE0;
                 border-radius: 10px;
+                color: #000000;
                 padding: 3px 10px;
             }
             QComboBox::drop-down {
                 border: none;
+                color: #000000;
                 padding-right: 5px;
             }
             QComboBox::down-arrow {
@@ -144,8 +154,12 @@ class BridgeAndTrafficData(QWidget):
             QComboBox QAbstractItemView {
                 border: 1px solid #DDDCE0;
                 border-radius: 5px;
+                color: #000000;
                 background-color: #FFFFFF;
                 outline: none;
+            }
+            QComboBox QAbstractItemView::item {
+                color: #000000;
             }
             QComboBox QAbstractItemView::item:selected {
                 background-color: #FDEFEF;
@@ -187,14 +201,12 @@ class BridgeAndTrafficData(QWidget):
         label = QLabel("Number of Lanes")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 0, 0, 1, 1)
+
         valuer_combo = QComboBox(self.general_widget)
         valuer_combo.setFixedWidth(self.text_box_width)
         valuer_combo.setPlaceholderText("Select")
-        valuer_combo.addItem("1")
-        valuer_combo.addItem("2")
-        valuer_combo.addItem("3")
-        valuer_combo.addItem("4")
-        valuer_combo.addItem("5+")
+        valuer_combo.addItems(self.data[KEY_LANES][KEY_OPTIONS])
+        self.traffic_widgets.append(valuer_combo)
         grid_layout.addWidget(valuer_combo, 0, 1, 1, 1)
 
         info_icon = QLabel(" ")
@@ -215,6 +227,7 @@ class BridgeAndTrafficData(QWidget):
                 padding: 3px 10px;
             }
         """)
+        self.traffic_widgets.append(input_widget)
         grid_layout.addWidget(input_widget, 1, 1, 1, 1)
         info_icon = QLabel("(km)")
         info_icon.setStyleSheet("color: grey; font-size: 14px;")
@@ -225,14 +238,14 @@ class BridgeAndTrafficData(QWidget):
         label = QLabel("Road Roughness")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 3, 0, 1, 1)
+
         valuer_combo = QComboBox(self.general_widget)
         valuer_combo.setFixedWidth(self.text_box_width)
         valuer_combo.setPlaceholderText("Select")
-        valuer_combo.addItem("option a")
-        valuer_combo.addItem("option b")
-        valuer_combo.addItem("option c")
-        valuer_combo.addItem("option d")
+        valuer_combo.addItems(self.data[KEY_ROADROUGHNESS][KEY_OPTIONS])
+        self.traffic_widgets.append(valuer_combo)
         grid_layout.addWidget(valuer_combo, 3, 1, 1, 1)
+
         info_icon = QLabel("(mm/km)")
         info_icon.setStyleSheet("color: grey; font-size: 14px;")
         info_icon.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -242,35 +255,31 @@ class BridgeAndTrafficData(QWidget):
         label = QLabel("Road Rise and Fall (RF)")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 4, 0, 1, 1)
-        input_widget = QLineEdit(self.general_widget)
-        input_widget.setFixedWidth(self.text_box_width)
-        input_widget.setStyleSheet("""
-            QLineEdit {
-                border: 1px solid #DDDCE0;
-                border-radius: 10px;
-                padding: 3px 10px;
-            }
-        """)
-        grid_layout.addWidget(input_widget, 4, 1, 1, 1)
+
+        valuer_combo = QComboBox(self.general_widget)
+        valuer_combo.setFixedWidth(self.text_box_width)
+        valuer_combo.setPlaceholderText("Select")
+        valuer_combo.addItems(self.data[KEY_ROAD_RISE_AND_FALL][KEY_OPTIONS])
+        self.traffic_widgets.append(valuer_combo)
+        grid_layout.addWidget(valuer_combo, 4, 1, 1, 1)
 
         info_icon = QLabel("(m/km)")
         info_icon.setStyleSheet("color: grey; font-size: 14px;")
         info_icon.setAlignment(Qt.AlignmentFlag.AlignLeft)
         grid_layout.addWidget(info_icon, 4, 2, 1, 1)
 
+
         # Type of Road
         label = QLabel("Type of Road")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 5, 0, 1, 1)
+
         valuer_combo = QComboBox(self.general_widget)
         valuer_combo.setFixedWidth(self.text_box_width)
         valuer_combo.setPlaceholderText("Select")
-        valuer_combo.addItem("option a")
-        valuer_combo.addItem("option b")
-        valuer_combo.addItem("option c")
-        valuer_combo.addItem("option d")
+        valuer_combo.addItems(self.data[KEY_TYPE_OF_ROAD][KEY_OPTIONS])
         grid_layout.addWidget(valuer_combo, 5, 1, 1, 1)
-        
+        self.traffic_widgets.append(valuer_combo)     
 
         info_icon = QLabel(" ")
         info_icon.setStyleSheet("color: grey; font-size: 14px;")
@@ -283,13 +292,12 @@ class BridgeAndTrafficData(QWidget):
         label.setWordWrap(True)
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 6, 0, 1, 1)
+
         valuer_combo = QComboBox(self.general_widget)
         valuer_combo.setFixedWidth(self.text_box_width)
         valuer_combo.setPlaceholderText("Select")
-        valuer_combo.addItem("option a")
-        valuer_combo.addItem("option b")
-        valuer_combo.addItem("option c")
-        valuer_combo.addItem("option d")
+        valuer_combo.addItems(self.data[KEY_ANNUAL_INCREASE][KEY_OPTIONS])
+        self.traffic_widgets.append(valuer_combo)
         grid_layout.addWidget(valuer_combo, 6, 1, 1, 1)
 
         info_icon = QLabel("(%)")
@@ -327,6 +335,7 @@ class BridgeAndTrafficData(QWidget):
             v_label.setFixedWidth(50)
             v_label.setStyleSheet("background-color: #FFFFFF; border: 1px solid #FFFFFF; border-radius: 10px; padding: 10px 10px 10px 1px;")
             v_input = QLineEdit()
+            self.traffic_widgets.append(v_input)
             v_input.setFixedWidth(self.text_box_width)
             v_input.setStyleSheet("""
                 QLineEdit {
@@ -362,10 +371,13 @@ class BridgeAndTrafficData(QWidget):
 
         back_button = QPushButton("Back")
         back_button.setObjectName("nav_button")
+        back_button.clicked.connect(lambda: self.back.emit(KEY_BRIDGE_TRAFFIC))
         self.button_h_layout.addWidget(back_button)
 
         next_button = QPushButton("Next")
         next_button.setObjectName("nav_button")
+        next_button.clicked.connect(self.collect_data)
+        next_button.clicked.connect(lambda: self.next.emit(KEY_BRIDGE_TRAFFIC))
         self.button_h_layout.addWidget(next_button)
 
         # Add initial spacing before the navigation buttons
@@ -376,6 +388,25 @@ class BridgeAndTrafficData(QWidget):
         self.scroll_content_layout.addSpacerItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         left_panel_vlayout.addWidget(self.scroll_area)
+    
+    def collect_data(self):
+        data = []
+        for widget in self.traffic_widgets:
+            if isinstance(widget, QComboBox):
+                value = widget.currentText()
+            elif isinstance(widget, QLineEdit):
+                value = widget.text() if widget.text() != "" else "0"
+            data.append(value)
+        print("Collected Data from UI:",data)     
+
+        # calculate Road User Cost Calculation
+        road_user_data = self.database_manager.calculate_irc_road_cost(data)
+        # Update Results Dict
+        self.parent.results[COST_TOTAL_ROAD_USER] = road_user_data
+        
+        # Calculate additional carbon emission costs
+        cost = self.database_manager.additional_carbon_emission_cost(data)
+        self.parent.results[COST_ADDITIONAL_CARBON_EMISSION] = cost
     
     def close_widget(self):
         self.closed.emit()

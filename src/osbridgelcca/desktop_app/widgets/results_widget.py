@@ -14,7 +14,7 @@ with open(r"dependencies/d3js.js", "r", encoding="utf-8") as f:
 class ResultsWidget(QWidget):
     closed = Signal()
     def __init__(self, parent=None):
-        super().__init__(parent)
+        super().__init__()
         self.setObjectName("central_panel_widget")
         self.setStyleSheet("""
            #central_panel_widget {

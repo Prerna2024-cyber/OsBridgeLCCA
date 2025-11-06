@@ -2,13 +2,19 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
 from PySide6.QtGui import QIcon
+from .utils.data import *
 import sys
 import os
 
 class FinancialData(QWidget):
     closed = Signal()
-    def __init__(self, parent=None):
+    next = Signal(str)
+    back = Signal(str)
+    def __init__(self, database, parent=None):
         super().__init__()
+        self.parent = parent
+        self.database_manager = database
+        self.widgets = []
 
         self.setStyleSheet("""
             #central_panel_widget {
@@ -170,6 +176,7 @@ class FinancialData(QWidget):
         label1_layout.addWidget(info_icon)
         label1_layout.addStretch(1)
         input1 = QLineEdit()
+        self.widgets.append(input1)
         input1.setAlignment(Qt.AlignmentFlag.AlignLeft)
         input1.setFixedWidth(field_width)
         input1.setText("4.2500")
@@ -191,6 +198,7 @@ class FinancialData(QWidget):
         label2 = QLabel("Interest Rate")
         label2.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input2 = QLineEdit()
+        self.widgets.append(input2)
         input2.setAlignment(Qt.AlignmentFlag.AlignLeft)
         input2.setFixedWidth(field_width)
         input2.setText("10")
@@ -206,6 +214,7 @@ class FinancialData(QWidget):
         label3 = QLabel("Investment Ratio")
         label3.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input3 = QLineEdit()
+        self.widgets.append(input3)
         input3.setAlignment(Qt.AlignmentFlag.AlignLeft)
         input3.setFixedWidth(field_width)
         input3.setText("0.5000")
@@ -220,6 +229,7 @@ class FinancialData(QWidget):
         label4 = QLabel("Duration of Study")
         label4.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input4 = QLineEdit()
+        self.widgets.append(input4)
         input4.setAlignment(Qt.AlignmentFlag.AlignLeft)
         input4.setFixedWidth(field_width)
         input4.setText("50 & 100")
@@ -235,6 +245,7 @@ class FinancialData(QWidget):
         label5 = QLabel("Time for construction of Base Project")
         label5.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input5 = QLineEdit()
+        self.widgets.append(input5)
         input5.setAlignment(Qt.AlignmentFlag.AlignLeft)
         input5.setFixedWidth(field_width)
         input5.setText("")
@@ -259,10 +270,14 @@ class FinancialData(QWidget):
 
         back_button = QPushButton("Back")
         back_button.setObjectName("nav_button")
+        back_button.clicked.connect(lambda: self.back.emit(KEY_FINANCIAL))
         self.button_h_layout.addWidget(back_button)
 
         next_button = QPushButton("Next")
         next_button.setObjectName("nav_button")
+        next_button.clicked.connect(self.collect_data)
+        
+        next_button.clicked.connect(lambda: self.next.emit(KEY_FINANCIAL))
         self.button_h_layout.addWidget(next_button)
 
         # Add initial spacing before the navigation buttons
@@ -277,6 +292,23 @@ class FinancialData(QWidget):
     def close_widget(self):
         self.closed.emit()
         self.setParent(None)
+
+    def collect_data(self):
+        data = []
+        for widget in self.widgets:
+            print(f"Collecting data from widget: {widget}")
+            if isinstance(widget, QComboBox):
+                value = widget.currentText()
+            elif isinstance(widget, QLineEdit):
+                value = widget.text() if widget.text() != "" else "0"
+            data.append(value)
+        print("Collected Data from UI:",data)     
+
+        # calculate time cost
+        total_initial_construction_cost = self.parent.results.get(COST_TOTAL_INIT_CONST)
+        time_cost = self.database_manager.calculate_time_cost(data, total_initial_construction_cost)
+        # Update Results Dict
+        self.parent.results[COST_TIME] = time_cost
 
 #----------------Standalone-Test-Code--------------------------------
 

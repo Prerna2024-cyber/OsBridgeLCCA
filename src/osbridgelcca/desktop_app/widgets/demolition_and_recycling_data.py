@@ -2,13 +2,19 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
 from PySide6.QtGui import QIcon
+from .utils.data import *
 import sys
 import os
 
 class DemolitionAndRecyclingData(QWidget):
     closed = Signal()
-    def __init__(self, parent=None):
+    next = Signal(str)
+    back = Signal(str)
+    def __init__(self, database, parent=None):
         super().__init__()
+        self.parent = parent
+        self.database_manager = database
+        self.widgets = []
 
         self.setStyleSheet("""
             #central_panel_widget {
@@ -166,6 +172,7 @@ class DemolitionAndRecyclingData(QWidget):
         demolition_layout.setContentsMargins(0,0,0,0)
         demolition_layout.setSpacing(10)
         demolition_input = QLineEdit()
+        self.widgets.append(demolition_input)
         demolition_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         demolition_input.setFixedWidth(field_width)
         demolition_input.setText("10")
@@ -193,6 +200,7 @@ class DemolitionAndRecyclingData(QWidget):
         scrap_value_layout.setContentsMargins(0,0,0,0)
         scrap_value_layout.setSpacing(10)
         scrap_value_input = QLineEdit()
+        self.widgets.append(scrap_value_input)
         scrap_value_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         scrap_value_input.setFixedWidth(field_width)
         scrap_value_input.setText("50000")
@@ -220,6 +228,7 @@ class DemolitionAndRecyclingData(QWidget):
         steel_scrap_layout.setContentsMargins(0,0,0,0)
         steel_scrap_layout.setSpacing(10)
         steel_scrap_input = QLineEdit()
+        self.widgets.append(steel_scrap_input)
         steel_scrap_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         steel_scrap_input.setFixedWidth(field_width)
         steel_scrap_input.setText("98")
@@ -252,9 +261,11 @@ class DemolitionAndRecyclingData(QWidget):
 
         back_button = QPushButton("Back")
         back_button.setObjectName("nav_button")
+        back_button.clicked.connect(lambda: self.back.emit(KEY_DEMOLITION_RECYCLE))
         self.button_h_layout.addWidget(back_button)
 
         calculate_button = QPushButton("Calculate")
+        calculate_button.clicked.connect(self.collect_data)
         calculate_button.setObjectName("nav_button")
         self.button_h_layout.addWidget(calculate_button)
 
@@ -270,6 +281,49 @@ class DemolitionAndRecyclingData(QWidget):
     def close_widget(self):
         self.closed.emit()
         self.setParent(None)
+
+
+    def collect_data(self):
+        data = []
+        for widget in self.widgets:
+            print(f"Collecting data from widget: {widget}")
+            if isinstance(widget, QComboBox):
+                value = widget.currentText()
+            elif isinstance(widget, QLineEdit):
+                value = widget.text()
+            data.append(value)
+        print("Collected Data from UI:",data)     
+
+        # calculate demolition and disposal cost
+        total_initial_construction_cost = self.parent.results.get(COST_TOTAL_INIT_CONST)
+        cost = self.database_manager.demolition_and_disposal_cost(data, total_initial_construction_cost)
+        # Update Results Dict
+        self.parent.results[COST_DEMOLITION_DISPOSAL] = cost
+
+        # recycling cost
+        cost = self.database_manager.recycling_cost(data)
+        # Update Results Dict
+        self.parent.results[COST_RECYCLING] = cost
+
+        # reconstruction cost
+        initial_construction_cost = self.parent.results[COST_TOTAL_INIT_CONST]
+        demolition_cost = self.parent.results[COST_DEMOLITION_DISPOSAL]
+        carbon_emission_cost = self.parent.results[COST_TOTAL_INIT_CARBON_EMISSION]
+        time_cost = self.parent.results[COST_TIME]
+        roaduser_cost = self.parent.results[COST_TOTAL_ROAD_USER]
+        rerouting_carbon_cost = self.parent.results[COST_ADDITIONAL_CARBON_EMISSION]
+
+        cost = self.database_manager.reconstruction_cost(initial_construction_cost,
+                                                         demolition_cost,
+                                                         carbon_emission_cost,
+                                                         time_cost,
+                                                         roaduser_cost,
+                                                         rerouting_carbon_cost
+                                                         )
+        # Update Results Dict
+        self.parent.results[COST_RECONSTRUCTION] = cost
+
+        print(f"Results:\n{self.parent.results}")
 
 #----------------Standalone-Test-Code--------------------------------
 

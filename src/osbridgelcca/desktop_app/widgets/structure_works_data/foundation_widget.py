@@ -2,12 +2,14 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
 from PySide6.QtGui import QIcon
+from PySide6.QtGui import QDoubleValidator
+from ..utils.data import *
 import sys
 
 class ComponentWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-
+        self.data = construction_materials.get(KEY_FOUNDATION)
         self.material_rows = [] # To store references to widgets in each material row
         self.current_material_row_idx = 1 # Start index for material rows (0 is header)  
 
@@ -25,7 +27,8 @@ class ComponentWidget(QWidget):
         component_header_layout.addWidget(component_label)
 
         self.component_combobox = QComboBox()
-        self.component_combobox.addItems(["Earthwork", "Concrete", "Steel", "Wood"])
+        self.component_combobox.currentTextChanged.connect(self.update_comp_material)
+        self.component_combobox.addItems(self.data.keys())
         self.component_combobox.setContentsMargins(0, 5, 0, 5)
         component_header_layout.addWidget(self.component_combobox)
 
@@ -77,14 +80,60 @@ class ComponentWidget(QWidget):
         self.add_material_row()
         self.add_material_row()
 
+        self.update_comp_material(self.component_combobox.currentText())
+
         # --- Add Material Button ---
         self.add_material_button = QPushButton("+ Add Material")
         self.add_material_button.setObjectName("add_material_button")
         self.add_material_button.clicked.connect(self.add_material_row)
         self.component_first_scroll_content_layout.addWidget(self.add_material_button, alignment=Qt.AlignCenter)
         
+    def collect_data(self):
+        rows_data = []
+        for row in self.material_rows:
+            component = self.component_combobox.currentText()
+            material_type = row[KEY_TYPE].currentText()
+            material_grade = row[KEY_GRADE].currentText()
+            quantity = row[KEY_QUANTITY].text()
+            unit_m3 = row[KEY_UNIT_M3].currentText()
+            rate = row[KEY_RATE].text()
+            rate_data_source = row[KEY_RATE_DATA_SOURCE].text()
+            row_dict = { KEY_COMPONENT: component,
+                         KEY_TYPE: material_type,
+                         KEY_GRADE: material_grade,
+                         KEY_QUANTITY: quantity if quantity.strip() else "0",
+                         KEY_UNIT_M3: unit_m3,
+                         KEY_RATE: rate if rate.strip() else "0.00",
+                         KEY_RATE_DATA_SOURCE: rate_data_source
+                        }
+            rows_data.append(row_dict)
+        return rows_data
+
+    def update_comp_material(self, selected_component):
+        materials = self.data.get(selected_component).keys()
+        for i in range(len(self.material_rows)):
+            material_combo = self.material_rows[i][KEY_TYPE]
+            material_combo.clear()
+            material_combo.addItems(materials)
+    
+    def update_comp_grades(self, selected_material, widget):
+        selected_component = self.component_combobox.currentText()
+        grades = self.data.get(selected_component,{}).get(selected_material,{}).get(KEY_GRADE,[])
+        widget.clear()
+        widget.addItems(grades)
+    
+    def update_comp_units(self, selected_material, widget):
+        selected_component = self.component_combobox.currentText()
+        units = self.data.get(selected_component,{}).get(selected_material,{}).get(KEY_UNITS,[])
+        widget.clear()
+        widget.addItems(units)
 
     def add_material_row(self):
+        validator = QDoubleValidator()
+        validator.setRange(0.0, 999999.99, 2)
+        validator.setBottom(0.0)
+        validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+    
         row_widgets = {}
         row_idx = self.current_material_row_idx
 
@@ -93,45 +142,50 @@ class ComponentWidget(QWidget):
         fixed_input_width = 80
 
         type_material_combo = QComboBox()
-        type_material_combo.addItems(["Sand", "Gravel", "Cement", "Water", "Admixture", "Rebar", "Other"])
         type_material_combo.setObjectName("MaterialGridInput")
         type_material_combo.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(type_material_combo, row_idx, 0)
-        row_widgets['type'] = type_material_combo
+        row_widgets[KEY_TYPE] = type_material_combo
 
         grade_combo = QComboBox()
-        grade_combo.addItems(["A", "B", "C", "X", "Y", "Z", "N/A"])
         grade_combo.setObjectName("MaterialGridInput")
+        type_material_combo.currentTextChanged.connect(
+            lambda text, widget=grade_combo: self.update_comp_grades(text, widget)
+        )
         grade_combo.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(grade_combo, row_idx, 1)
-        row_widgets['grade'] = grade_combo
+        row_widgets[KEY_GRADE] = grade_combo
 
         quantity_edit = QLineEdit()
+        quantity_edit.setValidator(validator)
         quantity_edit.setPlaceholderText("0")
         quantity_edit.setObjectName("MaterialGridInput")
         quantity_edit.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(quantity_edit, row_idx, 2)
-        row_widgets['quantity'] = quantity_edit
+        row_widgets[KEY_QUANTITY] = quantity_edit
 
         unit_combo_m3 = QComboBox()
-        unit_combo_m3.addItems(["m³", "ft³", "kg", "ton", "litre"])
         unit_combo_m3.setObjectName("MaterialGridInput")
+        type_material_combo.currentTextChanged.connect(
+            lambda text, widget=unit_combo_m3: self.update_comp_units(text, widget)
+        )
         unit_combo_m3.setFixedWidth(fixed_input_width) # Previously 80, now consistent with others
         self.material_grid_layout.addWidget(unit_combo_m3, row_idx, 3) # Directly add, no extra layout
-        row_widgets['unit_m3'] = unit_combo_m3
+        row_widgets[KEY_UNIT_M3] = unit_combo_m3
 
         rate_edit = QLineEdit()
+        rate_edit.setValidator(validator)
         rate_edit.setPlaceholderText("0.00")
         rate_edit.setObjectName("MaterialGridInput")
         rate_edit.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(rate_edit, row_idx, 4)
-        row_widgets['rate'] = rate_edit
+        row_widgets[KEY_RATE] = rate_edit
 
         rate_data_source_edit = QLineEdit()
         rate_data_source_edit.setObjectName("MaterialGridInput")
         rate_data_source_edit.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(rate_data_source_edit, row_idx, 5)
-        row_widgets['rate_data_source'] = rate_data_source_edit
+        row_widgets[KEY_RATE_DATA_SOURCE] = rate_data_source_edit
 
         remove_button = QPushButton("x")
         remove_button.setFixedSize(24, 24)
@@ -214,8 +268,11 @@ class ComponentWidget(QWidget):
 
 class Foundation(QWidget):
     closed = Signal()
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    next = Signal(str)
+    back = Signal(str)
+    def __init__(self, database, parent=None):
+        super().__init__()
+        self.database_manager = database
         self.setObjectName("central_panel_widget")
         self.component_widgets = [] # To store references to each ComponentWidget instance
         self.setStyleSheet("""
@@ -440,12 +497,10 @@ class Foundation(QWidget):
         # Adjust these stretch factors to control the position
         self.button_h_layout.addStretch(6) # Larger stretch on the left to push it more right
 
-        back_button = QPushButton("Back")
-        back_button.setObjectName("nav_button")
-        self.button_h_layout.addWidget(back_button)
-
         next_button = QPushButton("Next")
         next_button.setObjectName("nav_button")
+        next_button.clicked.connect(self.save_data)
+        next_button.clicked.connect(lambda: self.next.emit(KEY_FOUNDATION))
         self.button_h_layout.addWidget(next_button)
 
         # Add the initial component layout
@@ -454,6 +509,18 @@ class Foundation(QWidget):
         # Add initial spacing before the navigation buttons
         self.scroll_content_layout.addLayout(self.button_h_layout)
         left_panel_vlayout.addWidget(self.scroll_area)
+
+    def collect_data(self):
+        all_data = []
+        for component_widget in self.component_widgets:
+            component_data = component_widget.collect_data()
+            all_data.append(component_data)
+        return all_data
+    
+    def save_data(self):
+        data = self.collect_data()
+        print("\nCollected Data from UI:",data)     
+        self.database_manager.input_data_row(KEY_FOUNDATION, data)
 
     def add_component_layout(self):
         new_component = ComponentWidget(self)

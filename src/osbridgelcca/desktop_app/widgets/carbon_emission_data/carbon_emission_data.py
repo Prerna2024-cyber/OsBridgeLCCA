@@ -2,12 +2,14 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
 from PySide6.QtGui import QIcon
+from ..utils.data import *
 import sys
 
 class ComponentWidget(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, data, parent=None):
         super().__init__(parent)
-        
+        self.widgets = []
+        self.data = data
         self.material_rows = [] # To store references to widgets in each material row
         self.current_material_row_idx = 1 # Start index for material rows (0 is header)    
 
@@ -38,18 +40,20 @@ class ComponentWidget(QWidget):
         self.component_first_scroll_content_layout.addLayout(self.material_grid_layout)
     
         # Add initial two material rows
-        self.add_material_row()
-        self.add_material_row()
+        for item in self.data:
+            self.widgets.append(self.add_material_row(item))
+            
 
-        # --- Add Material Button ---
-        self.add_material_button = QPushButton("+ Add Material")
-        self.add_material_button.setObjectName("add_material_button")
-        self.add_material_button.clicked.connect(self.add_material_row)
-        self.component_first_scroll_content_layout.addWidget(self.add_material_button, alignment=Qt.AlignCenter)
+
+        # # --- Add Material Button ---
+        # self.add_material_button = QPushButton("+ Add Material")
+        # self.add_material_button.setObjectName("add_material_button")
+        # self.add_material_button.clicked.connect(self.add_material_row)
+        # self.component_first_scroll_content_layout.addWidget(self.add_material_button, alignment=Qt.AlignCenter)
         
 
-    def add_material_row(self):
-        row_widgets = {}
+    def add_material_row(self, item):
+        row_widgets = [item[1], item[2], item[3], item[4]]
         row_idx = self.current_material_row_idx
 
         # Set fixed width for input widgets.
@@ -57,25 +61,23 @@ class ComponentWidget(QWidget):
         fixed_input_width_line_edit = 80 # Width for individual line edits
 
         type_material_combo = QComboBox()
-        type_material_combo.addItems(["Sand", "Gravel", "Cement", "Water", "Admixture", "Rebar", "Other"])
+        type_material_combo.addItem(item[0])
         type_material_combo.setObjectName("MaterialGridInput")
         type_material_combo.setFixedWidth(fixed_input_width_combo)
         self.material_grid_layout.addWidget(type_material_combo, row_idx, 0, alignment=Qt.AlignmentFlag.AlignHCenter)
-        row_widgets['type'] = type_material_combo
 
         quantity_edit = QLineEdit()
-        quantity_edit.setPlaceholderText("0")
+        quantity_edit.setText(str(item[2]))
+        quantity_edit.setReadOnly(True)
         quantity_edit.setObjectName("MaterialGridInput")
         quantity_edit.setFixedWidth(fixed_input_width_line_edit)
         self.material_grid_layout.addWidget(quantity_edit, row_idx, 1, alignment=Qt.AlignmentFlag.AlignHCenter)
-        row_widgets['quantity'] = quantity_edit
 
         unit_combo_m3 = QComboBox()
-        unit_combo_m3.addItems(["m³", "ft³", "kg", "ton", "litre"])
+        unit_combo_m3.addItem(str(item[1]))
         unit_combo_m3.setObjectName("MaterialGridInput")
         unit_combo_m3.setFixedWidth(fixed_input_width_combo)
         self.material_grid_layout.addWidget(unit_combo_m3, row_idx, 2, alignment=Qt.AlignmentFlag.AlignHCenter)
-        row_widgets['unit_m3'] = unit_combo_m3
 
 
         # --- Embodied Carbon Energy (LineEdit + QLabel for unit text) - Column 3 ---
@@ -85,6 +87,7 @@ class ComponentWidget(QWidget):
         embodied_carbon_layout.setSpacing(5) # Small spacing between line edit and label
 
         embodied_carbon_edit = QLineEdit()
+        row_widgets.append(embodied_carbon_edit)
         embodied_carbon_edit.setPlaceholderText("0.00")
         embodied_carbon_edit.setObjectName("MaterialGridInput")
         embodied_carbon_edit.setFixedWidth(fixed_input_width_combo) # Changed to fixed_input_width_combo
@@ -98,8 +101,6 @@ class ComponentWidget(QWidget):
 
 
         self.material_grid_layout.addLayout(embodied_carbon_layout, row_idx, 3, alignment=Qt.AlignmentFlag.AlignHCenter)
-        row_widgets['embodied_carbon_edit'] = embodied_carbon_edit
-        row_widgets['embodied_carbon_unit_label'] = embodied_carbon_unit_label
 
 
         # --- Carbon Emission Factor (LineEdit + QLabel for unit text) - Column 4 ---
@@ -110,6 +111,7 @@ class ComponentWidget(QWidget):
         carbon_emission_layout.addStretch()
 
         carbon_emission_edit = QLineEdit()
+        row_widgets.append(carbon_emission_edit)
         carbon_emission_edit.setPlaceholderText("0.00")
         carbon_emission_edit.setObjectName("MaterialGridInput")
         carbon_emission_edit.setFixedWidth(fixed_input_width_combo) # Changed to fixed_input_width_combo
@@ -124,14 +126,16 @@ class ComponentWidget(QWidget):
         carbon_emission_layout.addStretch()
 
         self.material_grid_layout.addLayout(carbon_emission_layout, row_idx, 4)
-        row_widgets['carbon_emission_edit'] = carbon_emission_edit
-        row_widgets['carbon_emission_unit_label'] = carbon_emission_unit_label
 
 
         self.material_rows.append(row_widgets)
         self.current_material_row_idx += 1
         self.updateGeometry()
         self.adjustSize()
+
+        return row_widgets
+
+
 
 
     def remove_material_row_by_widgets(self, row_widgets_to_remove):
@@ -185,11 +189,31 @@ class ComponentWidget(QWidget):
         self.material_grid_layout.invalidate()
         self.adjustSize()
 
+
+    def collect_data(self):
+        p = []
+        for row in self.widgets:
+            data = {
+                KEY_TYPE: row[2],
+                KEY_GRADE: row[3],
+                KEY_QUANTITY: row[1],
+                KEY_UNIT_M3: row[0],
+                KEY_EMBODIED_CARBON_ENERGY: row[4].text() if row[4].text() else "0",
+                KEY_CARBON_EMISSION_FACTOR: row[5].text() if row[4].text() else "0",
+            }
+            p.append(data)
+        return p
+
+
 class CarbonEmissionData(QWidget):
     closed = Signal()
-    def __init__(self):
+    next = Signal(str)
+    back = Signal(str)
+    def __init__(self, database, parent=None):
         super().__init__()
-
+        self.database_manager = database
+        self.material_store = self.database_manager.get_unique_materials_and_grades()
+        print(self.material_store)
         self.component_widgets = [] # To store references to each ComponentWidget instance
 
         self.setStyleSheet("""
@@ -414,15 +438,19 @@ class CarbonEmissionData(QWidget):
 
         back_button = QPushButton("Back")
         back_button.setObjectName("nav_button")
+        back_button.clicked.connect(lambda: self.back.emit(KEY_CARBON_EMISSION))
         self.button_h_layout.addWidget(back_button)
 
         next_button = QPushButton("Next")
         next_button.setObjectName("nav_button")
+        next_button.clicked.connect(self.collect_data)
+        next_button.clicked.connect(lambda: self.next.emit(KEY_CARBON_EMISSION))
         self.button_h_layout.addWidget(next_button)
 
 
         # Add the initial component layout
         self.add_component_layout()
+        
 
         # Add initial spacing before the navigation buttons
         self.scroll_content_layout.addLayout(self.button_h_layout)
@@ -435,7 +463,7 @@ class CarbonEmissionData(QWidget):
 
 
     def add_component_layout(self):
-        new_component = ComponentWidget(self)
+        new_component = ComponentWidget(data=self.material_store, parent=self)
         self.component_widgets.append(new_component)
 
         # Temporarily remove button_h_layout and the vertical spacer for insertion
@@ -479,6 +507,12 @@ class CarbonEmissionData(QWidget):
     def close_widget(self):
         self.closed.emit()
         self.setParent(None)
+
+    def collect_data(self):
+        data = self.component_widgets[0].collect_data()
+        print("Collected Data from UI:",data)     
+        self.database_manager.insert_carbon_emission_data(data)
+
 
 #----------------Standalone-Test-Code--------------------------------
 

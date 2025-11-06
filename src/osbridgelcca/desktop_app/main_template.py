@@ -26,27 +26,44 @@ from widgets.maintenance_repair_data import MaintenanceRepairData
 from widgets.demolition_and_recycling_data import DemolitionAndRecyclingData
 from widgets.project_details_left_widget import ProjectDetailsLeft
 from widgets.tab_widget import CustomTabWidget
+from widgets.utils.data import *
+from widgets.utils.database import DatabaseManager
 
 from PySide6.QtWidgets import QStackedWidget
 
 class UiMainWindow(object):
     def setupUi(self, MainWindow):
+        self.database_manager = DatabaseManager()
         # To check if tab widget is there or no
         self.tabs_active = False
+        self.results = {
+            COST_TOTAL_INIT_CONST: None,
+            COST_TOTAL_INIT_CARBON_EMISSION: None,
+            COST_TIME: None,
+            COST_TOTAL_ROAD_USER: None,
+            COST_ADDITIONAL_CARBON_EMISSION: None,
+            COST_PERIODIC_MAINTAINANCE: None,
+            COST_PERIODIC_MAINTAINANCE_CARBON_EMISSION: None,
+            COST_TOTAL_ROUTINE_INSPECTION: None,
+            COST_REPAIR_REHAB: None,
+            COST_DEMOLITION_DISPOSAL: None,
+            COST_RECYCLING: None,
+            COST_RECONSTRUCTION: None
+        }
         # Contains name of widget and its index in tabs
         self.active_tab_widgets = {}
         self.widget_map = {
-            "Structure Works Data": Foundation,
-            "Foundation": Foundation,
-            "Super-Structure": SuperStructure,
-            "Sub-Structure": SubStructure,
-            "Miscellaneous": AuxiliaryWorks,
-            "Financial Data": FinancialData,
-            "Carbon Emission Data": CarbonEmissionData,
-            "Carbon Emission Cost Data": CarbonEmissionCostData,
-            "Bridge and Traffic Data": BridgeAndTrafficData,
-            "Maintenance and Repair": MaintenanceRepairData,
-            "Demolition and Recycling": DemolitionAndRecyclingData
+            KEY_STRUCTURE_WORKS_DATA: Foundation,
+            KEY_FOUNDATION: Foundation,
+            KEY_SUPERSTRUCTURE: SuperStructure,
+            KEY_SUBSTRUCTURE: SubStructure,
+            KEY_AUXILIARY: AuxiliaryWorks,
+            KEY_FINANCIAL: FinancialData,
+            KEY_CARBON_EMISSION: CarbonEmissionData,
+            KEY_CARBON_EMISSION_COST: CarbonEmissionCostData,
+            KEY_BRIDGE_TRAFFIC: BridgeAndTrafficData,
+            KEY_MAINTAINANCE_REPAIR: MaintenanceRepairData,
+            KEY_DEMOLITION_RECYCLE: DemolitionAndRecyclingData
         }
 
         if not MainWindow.objectName():
@@ -422,6 +439,9 @@ class UiMainWindow(object):
         self.compare.clicked.connect(show_comparison_widget)
 
         def show_project_details_widget(widget_name=None):
+            if widget_name == KEY_STRUCTURE_WORKS_DATA:
+                # treat it as foundation
+                widget_name = KEY_FOUNDATION
             if widget_name and widget_name in self.widget_map:                
                 # Tabs are already visible
                 if self.tabs_active:
@@ -435,8 +455,10 @@ class UiMainWindow(object):
                     self.active_tab_widgets = {}
                     self.tabs_active = True
                     self.current_right_widget = CustomTabWidget(parent=self)
+                    
                     # Add Tab widget
                     self.right_panel_placeholder.layout().addWidget(self.current_right_widget)
+                    
 
                 # Remove left widget first
                 self.remove_left_widget()
@@ -460,7 +482,7 @@ class UiMainWindow(object):
             if hasattr(self.current_right_widget, 'param_buttons'):
                 for btn in self.current_right_widget.param_buttons:
                     btn.clicked.connect(lambda checked, b=btn: show_project_details_widget(b.text().strip()))
-                    
+
         def remove_right_widget():
             if self.current_right_widget:
                 self.right_panel_placeholder.layout().removeWidget(self.current_right_widget)
@@ -480,6 +502,9 @@ class UiMainWindow(object):
     
     def show_project_detail_widgets(self, widget_name):
         """Public method to show project detail widgets"""
+        if widget_name == KEY_STRUCTURE_WORKS_DATA:
+            # treat it as foundation
+            widget_name = KEY_FOUNDATION
         if widget_name and widget_name in self.widget_map:
             # Tabs are already visible
             if self.tabs_active:
@@ -489,7 +514,23 @@ class UiMainWindow(object):
                     self.current_right_widget.activate_tab(index)
                 else:
                     # add new tab
-                    widget = self.widget_map[widget_name]()
+                    widget = self.widget_map[widget_name](database=self.database_manager, parent=self)
+                    widget.next.connect(self.next_widget)
+                    widget.back.connect(self.prev_widget)
                     index = self.current_right_widget.add_new_tab(widget, widget_name)
                     # add record of this widget
                     self.active_tab_widgets[widget_name] = index
+
+    def next_widget(self, widget_name):
+        current = list(self.widget_map.keys()).index(widget_name)
+        next = list(self.widget_map.keys())[current + 1]
+        if self.current_left_widget and hasattr(self.current_left_widget, 'all_param_buttons'):
+            self.current_left_widget.all_param_buttons[next].click()
+        self.show_project_detail_widgets(next)
+
+    def prev_widget(self, widget_name):
+        current = list(self.widget_map.keys()).index(widget_name)
+        prev = list(self.widget_map.keys())[current - 1]
+        if self.current_left_widget and hasattr(self.current_left_widget, 'all_param_buttons'):
+            self.current_left_widget.all_param_buttons[prev].click()
+        self.show_project_detail_widgets(prev)

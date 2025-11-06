@@ -9,7 +9,7 @@ import sys
 class ComparisonWidget(QWidget):
     closed = Signal()
     def __init__(self, parent=None):
-        super().__init__(parent)
+        super().__init__()
         self.setObjectName("comparison_panel_widget")
         self.setStyleSheet("""
            #comparison_panel_widget {

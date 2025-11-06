@@ -2,12 +2,18 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
 from PySide6.QtGui import QIcon
+from ..utils.data import *
 import sys
 
 class CarbonEmissionCostData(QWidget):
     closed = Signal()
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    next = Signal(str)
+    back = Signal(str)
+    def __init__(self, database, parent=None):
+        super().__init__()
+        self.parent = parent
+        self.widget = []
+        self.database_manager = database
 
         self.setStyleSheet("""
             #central_panel_widget {
@@ -161,6 +167,7 @@ class CarbonEmissionCostData(QWidget):
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 0, 0, 1, 1)
         input_widget = QLineEdit(self.general_widget)
+        self.widget.append(input_widget)
         input_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
         input_widget.setFixedWidth(field_width)
         input_widget.setText("SSP2") # Set default text
@@ -178,6 +185,7 @@ class CarbonEmissionCostData(QWidget):
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 1, 0, 1, 1)
         input_widget = QLineEdit(self.general_widget)
+        self.widget.append(input_widget)
         input_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
         input_widget.setFixedWidth(field_width)
         input_widget.setText("RCP60") # Set default text
@@ -200,8 +208,8 @@ class CarbonEmissionCostData(QWidget):
         scc_h_layout = QHBoxLayout(scc_widget)
         scc_h_layout.setContentsMargins(0,0,0,0)
         scc_h_layout.setSpacing(10)
-
         input_widget = QLineEdit()
+        self.widget.append(input_widget)
         input_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
         input_widget.setFixedWidth(field_width)  # Adjusted width for SCC input to match the image
         input_widget.setText("6.3936") # Set default text
@@ -239,10 +247,13 @@ class CarbonEmissionCostData(QWidget):
 
         back_button = QPushButton("Back")
         back_button.setObjectName("nav_button")
+        back_button.clicked.connect(lambda: self.back.emit(KEY_CARBON_EMISSION_COST))
         self.button_h_layout.addWidget(back_button)
 
         next_button = QPushButton("Next")
         next_button.setObjectName("nav_button")
+        next_button.clicked.connect(self.collect_data)
+        next_button.clicked.connect(lambda: self.next.emit(KEY_CARBON_EMISSION_COST))
         self.button_h_layout.addWidget(next_button)
 
         # Add initial spacing before the navigation buttons
@@ -253,6 +264,18 @@ class CarbonEmissionCostData(QWidget):
         self.scroll_content_layout.addSpacerItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         left_panel_vlayout.addWidget(self.scroll_area)
+    
+    def collect_data(self):
+        data = []
+        for widget in self.widget:
+            data.append(widget.text())
+        print("Collected Data from UI:",data)     
+
+        # calculate Carbon Emission Cost
+        carbon_cost = float(self.widget[2].text())  # Social Cost of Carbon input
+        carbon_emission_cost = self.database_manager.carbon_emission_cost(carbon_cost)
+        # Update Results Dict
+        self.parent.results[COST_TOTAL_INIT_CARBON_EMISSION] = carbon_cost
 
     def close_widget(self):
         self.closed.emit()

@@ -3,12 +3,13 @@ from PySide6.QtCore import QCoreApplication, QSize, Qt, QPropertyAnimation, QEas
 from PySide6.QtGui import (QIcon)
 from PySide6.QtWidgets import (QHBoxLayout, QTextEdit, QScrollArea, QSpacerItem, QSizePolicy,
     QPushButton, QWidget, QLabel, QVBoxLayout, QGridLayout, QLineEdit, QComboBox)
+from .utils.data import *
 import sys
 
 class ProjectDetailsWidget(QWidget):
     closed = Signal()
     def __init__(self, parent=None):
-        super().__init__(parent)
+        super().__init__()
         self.setObjectName("central_panel_widget")
         self.setStyleSheet("""
            #central_panel_widget {
@@ -381,12 +382,12 @@ class ProjectDetailsWidget(QWidget):
         self.input_param_option_layout.setContentsMargins(8, 8, 8, 8)
         self.input_param_option_layout.setSpacing(2)
         button_labels = [
-            "Structure Works Data",
-            "Financial Data",
-            "Carbon Emission Data",
-            "Bridge and Traffic Data",
-            "Maintenance and Repair",
-            "Demolition and Recycling"
+            KEY_STRUCTURE_WORKS_DATA,
+            KEY_FINANCIAL,
+            KEY_CARBON_EMISSION,
+            KEY_BRIDGE_TRAFFIC,
+            KEY_MAINTAINANCE_REPAIR,
+            KEY_DEMOLITION_RECYCLE
         ]
         self.selected_icon = QIcon("resources/selected_icon.png")
         self.param_buttons = []

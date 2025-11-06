@@ -2,34 +2,56 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
 from PySide6.QtGui import QIcon
+from PySide6.QtGui import QDoubleValidator
+from ..utils.data import *
 import sys
 
 class ComponentWidget(QWidget):
     def __init__(self, parent):
         super().__init__(parent)
-
-        self.material_rows = [] # To store references to widgets in each material row
-        self.current_material_row_idx = 1 # Start index for material rows (0 is header)  
-
+        
+        self.data = construction_materials.get(KEY_AUXILIARY)
+        self.material_rows = []
+        self.current_material_row_idx = 1
         self.init_ui()
 
+    def collect_data(self):
+        rows_data = []
+        for row in self.material_rows:
+            component = self.component_combobox.currentText()
+            material_type = row[KEY_TYPE].currentText()
+            material_grade = row[KEY_GRADE].currentText()
+            quantity = row[KEY_QUANTITY].text()
+            unit_m3 = row[KEY_UNIT_M3].currentText()
+            rate = row[KEY_RATE].text()
+            rate_data_source = row[KEY_RATE_DATA_SOURCE].text()
+            row_dict = { KEY_COMPONENT: component,
+                         KEY_TYPE: material_type,
+                         KEY_GRADE: material_grade,
+                         KEY_QUANTITY: quantity if quantity.strip() else "0",
+                         KEY_UNIT_M3: unit_m3,
+                         KEY_RATE: rate if rate.strip() else "0.00",
+                         KEY_RATE_DATA_SOURCE: rate_data_source
+                        }
+            rows_data.append(row_dict) 
+        return rows_data       
+
     def init_ui(self):
-        self.component_first_scroll_content_layout = QVBoxLayout(self) # Set QVBoxLayout directly on self
+        self.component_first_scroll_content_layout = QVBoxLayout(self)
         self.component_first_scroll_content_layout.setContentsMargins(10, 10, 10, 10)
         self.component_first_scroll_content_layout.setSpacing(10)
 
-        # Component Label and Dropdown with a remove button
         component_header_layout = QHBoxLayout()
         component_label = QLabel("Component:")
         component_label.setContentsMargins(0, 5, 0, 5)
         component_header_layout.addWidget(component_label)
 
         self.component_combobox = QComboBox()
-        self.component_combobox.addItems(["Earthwork", "Concrete", "Steel", "Wood"])
+        self.component_combobox.addItems(self.data.keys())
+        self.component_combobox.currentTextChanged.connect(self.update_comp_material)
         self.component_combobox.setContentsMargins(0, 5, 0, 5)
         component_header_layout.addWidget(self.component_combobox)
 
-        # Add a remove button for the component
         self.remove_component_button = QPushButton("x")
         self.remove_component_button.setFixedSize(24, 24)
         self.remove_component_button.setStyleSheet("""
@@ -55,12 +77,10 @@ class ComponentWidget(QWidget):
 
         self.component_first_scroll_content_layout.addLayout(component_header_layout)
 
-        # --- Material Details Grid Layout ---
         self.material_grid_layout = QGridLayout()
         self.material_grid_layout.setHorizontalSpacing(10)
         self.material_grid_layout.setVerticalSpacing(5)
 
-        # Header Row
         headers = ["Type of Material", "Grade", "Quantity", "Unit", "Rate", "Rate Data Source"]
         for col, header_text in enumerate(headers):
             label = QLabel(header_text)
@@ -68,71 +88,114 @@ class ComponentWidget(QWidget):
             label.setObjectName("MaterialGridLabel")
             self.material_grid_layout.addWidget(label, 0, col)
 
-        # Column stretch factors are removed as all input widgets will now have fixed widths.
-        # This allows the grid to size columns based on the fixed widget sizes and spacing.
-
         self.component_first_scroll_content_layout.addLayout(self.material_grid_layout)
 
-        # Add initial two material rows
         self.add_material_row()
         self.add_material_row()
 
-        # --- Add Material Button ---
+        self.update_comp_material(self.component_combobox.currentText())
+
         self.add_material_button = QPushButton("+ Add Material")
         self.add_material_button.setObjectName("add_material_button")
         self.add_material_button.clicked.connect(self.add_material_row)
         self.component_first_scroll_content_layout.addWidget(self.add_material_button, alignment=Qt.AlignCenter)
         
+    def update_comp_material(self, selected_component):
+        """Update all material combos when component changes"""
+        materials = list(self.data.get(selected_component, {}).keys())
+        for i in range(len(self.material_rows)):
+            material_combo = self.material_rows[i][KEY_TYPE]
+            grade_combo = self.material_rows[i][KEY_GRADE]
+            
+            # Clear and repopulate materials
+            material_combo.clear()
+            material_combo.addItems(materials)
+            
+            # Update grades for the first material
+            if materials:
+                self.update_comp_grades(material_combo.currentText(), grade_combo)
+
+    def update_comp_grades(self, selected_material, widget):
+        """Update grades based on selected material"""
+        selected_component = self.component_combobox.currentText()
+        grades = self.data.get(selected_component, {}).get(selected_material, {}).get(KEY_GRADE, [])
+        widget.clear()
+        widget.addItems(grades)
+
+    def update_comp_units(self, selected_material, widget):
+        selected_component = self.component_combobox.currentText()
+        units = self.data.get(selected_component,{}).get(selected_material,{}).get(KEY_UNITS,[])
+        widget.clear()
+        widget.addItems(units)
 
     def add_material_row(self):
+        validator = QDoubleValidator()
+        validator.setRange(0.0, 999999.99, 2)
+        validator.setBottom(0.0)
+        validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+    
         row_widgets = {}
         row_idx = self.current_material_row_idx
-
-        # Set fixed width for all input widgets to 80px, as requested.
-        # Note: This might make wider text truncate or appear cramped depending on content.
         fixed_input_width = 80
 
+        # Get current component and materials
+        selected_component = self.component_combobox.currentText()
+        materials = list(self.data.get(selected_component, {}).keys())
+
+        # Type of Material ComboBox
         type_material_combo = QComboBox()
-        type_material_combo.addItems(["Sand", "Gravel", "Cement", "Water", "Admixture", "Rebar", "Other"])
+        type_material_combo.addItems(materials)
         type_material_combo.setObjectName("MaterialGridInput")
         type_material_combo.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(type_material_combo, row_idx, 0)
-        row_widgets['type'] = type_material_combo
+        row_widgets[KEY_TYPE] = type_material_combo
 
+        # Grade ComboBox
         grade_combo = QComboBox()
-        grade_combo.addItems(["A", "B", "C", "X", "Y", "Z", "N/A"])
         grade_combo.setObjectName("MaterialGridInput")
+        type_material_combo.currentTextChanged.connect(
+            lambda text, widget=grade_combo: self.update_comp_grades(text, widget)
+        )
         grade_combo.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(grade_combo, row_idx, 1)
-        row_widgets['grade'] = grade_combo
+        row_widgets[KEY_GRADE] = grade_combo
 
+        # Quantity
         quantity_edit = QLineEdit()
+        quantity_edit.setValidator(validator)
         quantity_edit.setPlaceholderText("0")
         quantity_edit.setObjectName("MaterialGridInput")
         quantity_edit.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(quantity_edit, row_idx, 2)
-        row_widgets['quantity'] = quantity_edit
+        row_widgets[KEY_QUANTITY] = quantity_edit
 
+        # Unit
         unit_combo_m3 = QComboBox()
-        unit_combo_m3.addItems(["m³", "ft³", "kg", "ton", "litre"])
+        type_material_combo.currentTextChanged.connect(
+            lambda text, widget=unit_combo_m3: self.update_comp_units(text, widget)
+        )
         unit_combo_m3.setObjectName("MaterialGridInput")
-        unit_combo_m3.setFixedWidth(fixed_input_width) # Previously 80, now consistent with others
-        self.material_grid_layout.addWidget(unit_combo_m3, row_idx, 3) # Directly add, no extra layout
-        row_widgets['unit_m3'] = unit_combo_m3
+        unit_combo_m3.setFixedWidth(fixed_input_width)
+        self.material_grid_layout.addWidget(unit_combo_m3, row_idx, 3)
+        row_widgets[KEY_UNIT_M3] = unit_combo_m3
 
+        # Rate
         rate_edit = QLineEdit()
+        rate_edit.setValidator(validator)
         rate_edit.setPlaceholderText("0.00")
         rate_edit.setObjectName("MaterialGridInput")
         rate_edit.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(rate_edit, row_idx, 4)
-        row_widgets['rate'] = rate_edit
+        row_widgets[KEY_RATE] = rate_edit
 
+        # Rate Data Source
         rate_data_source_edit = QLineEdit()
         rate_data_source_edit.setObjectName("MaterialGridInput")
         rate_data_source_edit.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(rate_data_source_edit, row_idx, 5)
-        row_widgets['rate_data_source'] = rate_data_source_edit
+        row_widgets[KEY_RATE_DATA_SOURCE] = rate_data_source_edit
 
+        # Remove button
         remove_button = QPushButton("x")
         remove_button.setFixedSize(24, 24)
         remove_button.setStyleSheet("""
@@ -159,14 +222,15 @@ class ComponentWidget(QWidget):
 
         self.material_rows.append(row_widgets)
         self.current_material_row_idx += 1
-        self.updateGeometry() # Call updateGeometry on self, not on the scroll content widget
-        self.adjustSize() # Adjust the size of the component widget
-
+        self.updateGeometry()
+        self.adjustSize()
 
     def remove_material_row_by_widgets(self, row_widgets_to_remove):
+        """Remove a material row from the grid"""
         if row_widgets_to_remove not in self.material_rows:
             return
 
+        # Find the row index in the grid
         row_idx_in_grid = -1
         for i, row_dict in enumerate(self.material_rows):
             if row_dict == row_widgets_to_remove:
@@ -176,6 +240,7 @@ class ComponentWidget(QWidget):
         if row_idx_in_grid == -1:
             return
 
+        # Remove all widgets in the row
         for col in range(self.material_grid_layout.columnCount()):
             item = self.material_grid_layout.itemAtPosition(row_idx_in_grid, col)
             if item:
@@ -191,9 +256,11 @@ class ComponentWidget(QWidget):
                             sub_item.widget().deleteLater()
                     self.material_grid_layout.removeItem(layout)
 
+        # Remove from tracking list
         self.material_rows.remove(row_widgets_to_remove)
         self.current_material_row_idx -= 1
 
+        # Shift remaining rows up
         for r_idx in range(row_idx_in_grid, self.current_material_row_idx + 1):
             for c_idx in range(self.material_grid_layout.columnCount()):
                 item = self.material_grid_layout.itemAtPosition(r_idx + 1, c_idx)
@@ -207,17 +274,22 @@ class ComponentWidget(QWidget):
                         self.material_grid_layout.removeItem(layout)
                         self.material_grid_layout.addLayout(layout, r_idx, c_idx)
 
-        self.updateGeometry() # Call updateGeometry on self
-        self.update() # Call update on self
+        self.updateGeometry()
+        self.update()
         self.material_grid_layout.invalidate()
-        self.adjustSize() # Adjust the size of the component widget
+        self.adjustSize()
+
 
 class AuxiliaryWorks(QWidget):
     closed = Signal()
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    next = Signal(str)
+    back = Signal(str)
+    def __init__(self, database, parent=None):
+        super().__init__()
+        self.parent = parent
+        self.database_manager = database
         self.setObjectName("central_panel_widget")
-        self.component_widgets = [] # To store references to each ComponentWidget instance
+        self.component_widgets = []
         self.setStyleSheet("""
             #central_panel_widget {
                 background-color: #F8F8F8;
@@ -234,7 +306,6 @@ class AuxiliaryWorks(QWidget):
             }
 
             QScrollArea {
-
                 background-color: transparent;
                 outline: none;
             }
@@ -316,38 +387,35 @@ class AuxiliaryWorks(QWidget):
                 border-color: #606060;
             }
 
-            /* Styling for component_first_widget (the container for the nested scroll area) */
             #component_first_widget {
                 background-color: transparent;
-                margin-top: 10px; /* Add some space above each component block */
+                margin-top: 10px;
             }
 
-            #component_first_scroll_content_widget { /* This now applies directly to ComponentWidget itself */
+            #component_first_scroll_content_widget {
                 background-color: #FFFFFF;
                 padding: 10px;
-
                 border-radius: 8px;
             }
 
-            /* Updated Styling for navigation buttons to match the Add Material/Component buttons */
             QPushButton#nav_button {
-                background-color: #FFFFFF; /* White background */
-                border: 1px solid #E0E0E0; /* Light grey border */
-                border-radius: 8px; /* Slightly more rounded corners */
-                color: #3F3E5E; /* Dark text color */
-                padding: 6px 15px; /* Increased padding */
+                background-color: #FFFFFF;
+                border: 1px solid #E0E0E0;
+                border-radius: 8px;
+                color: #3F3E5E;
+                padding: 6px 15px;
                 text-align: center;
-                min-width: 80px; /* Ensure a minimum width */
+                min-width: 80px;
             }
             QPushButton#nav_button:hover {
-                background-color: #F8F8F8; /* Very subtle light grey on hover */
-                border-color: #C0C0C0; /* Darker border on hover */
+                background-color: #F8F8F8;
+                border-color: #C0C0C0;
             }
             QPushButton#nav_button:pressed {
-                background-color: #E8E8E8; /* Darker grey on pressed */
-                border-color: #A0A0A0; /* Even darker border */
+                background-color: #E8E8E8;
+                border-color: #A0A0A0;
             }
-            /* Styling for QComboBox */
+            
             QComboBox {
                 border: 1px solid #DDDCE0;
                 border-radius: 10px;
@@ -376,7 +444,6 @@ class AuxiliaryWorks(QWidget):
                 background-color: #FDEFEF;
             }
 
-            /* Styling for material grid elements */
             #MaterialGridLabel {
                 font-weight: bold;
                 color: #3F3E5E;
@@ -393,24 +460,25 @@ class AuxiliaryWorks(QWidget):
                 border: 1px solid #DDDCE0;
                 background-color: #FFFFFF;
             }
-            /* IMPROVED CSS FOR ADD MATERIAL/COMPONENT BUTTONS */
+            
             QPushButton#add_material_button, QPushButton#add_component_button {
-                background-color: #FFFFFF; /* White background */
-                border: 1px solid #E0E0E0; /* Light grey border */
-                border-radius: 8px; /* Slightly more rounded corners */
-                color: #3F3E5E; /* Dark text color */
-                padding: 6px 15px; /* Increased padding */
+                background-color: #FFFFFF;
+                border: 1px solid #E0E0E0;
+                border-radius: 8px;
+                color: #3F3E5E;
+                padding: 6px 15px;
                 text-align: center;
             }
             QPushButton#add_material_button:hover, QPushButton#add_component_button:hover {
-                background-color: #F8F8F8; /* Very subtle light grey on hover */
-                border-color: #C0C0C0; /* Darker border on hover */
+                background-color: #F8F8F8;
+                border-color: #C0C0C0;
             }
             QPushButton#add_material_button:pressed, QPushButton#add_component_button:pressed {
-                background-color: #E8E8E8; /* Darker grey on pressed */
-                border-color: #A0A0A0; /* Even darker border */
+                background-color: #E8E8E8;
+                border-color: #A0A0A0;
             }
         """)
+        
         left_panel_vlayout = QVBoxLayout(self)
         left_panel_vlayout.setContentsMargins(0, 0, 0, 0)
         left_panel_vlayout.setSpacing(0)
@@ -424,55 +492,48 @@ class AuxiliaryWorks(QWidget):
         self.scroll_area.setWidget(scroll_content_widget)
 
         self.scroll_content_layout = QVBoxLayout(scroll_content_widget)
-        self.scroll_content_layout.setContentsMargins(0,0,0,0)
+        self.scroll_content_layout.setContentsMargins(0, 0, 0, 0)
         self.scroll_content_layout.setSpacing(0)
 
-        # Create the Add Component button and connect it
         self.add_component_button = QPushButton("+ Add Component")
         self.add_component_button.setObjectName("add_component_button")
         self.add_component_button.clicked.connect(self.add_component_layout)
 
-        # Create the navigation buttons layout
         self.button_h_layout = QHBoxLayout()
         self.button_h_layout.setSpacing(10)
-        self.button_h_layout.setContentsMargins(10,10,10,10)
-
-        # Adjust these stretch factors to control the position
-        self.button_h_layout.addStretch(6) # Larger stretch on the left to push it more right
+        self.button_h_layout.setContentsMargins(10, 10, 10, 10)
+        self.button_h_layout.addStretch(6)
 
         back_button = QPushButton("Back")
         back_button.setObjectName("nav_button")
+        back_button.clicked.connect(lambda: self.back.emit(KEY_AUXILIARY))
         self.button_h_layout.addWidget(back_button)
 
         next_button = QPushButton("Next")
         next_button.setObjectName("nav_button")
+        next_button.clicked.connect(lambda: self.next.emit(KEY_AUXILIARY))
+        next_button.clicked.connect(self.save_data)
         self.button_h_layout.addWidget(next_button)
 
-        # Add the initial component layout
         self.add_component_layout()
 
-        # Add initial spacing before the navigation buttons
         self.scroll_content_layout.addLayout(self.button_h_layout)
         left_panel_vlayout.addWidget(self.scroll_area)
 
     def add_component_layout(self):
         new_component = ComponentWidget(self)
         self.component_widgets.append(new_component)
-        new_component.remove_component_button.clicked.connect(lambda: self.remove_component_layout(new_component))
+        new_component.remove_component_button.clicked.connect(
+            lambda: self.remove_component_layout(new_component)
+        )
 
-        # Temporarily remove button_h_layout and add_component_button for insertion
         if self.scroll_content_layout.indexOf(self.add_component_button) != -1:
             self.scroll_content_layout.removeWidget(self.add_component_button)
         if self.scroll_content_layout.indexOf(self.button_h_layout) != -1:
             self.scroll_content_layout.removeItem(self.button_h_layout)
 
-        # Insert the new component
         self.scroll_content_layout.addWidget(new_component)
-
-        # Re-add the 'Add Component' button
         self.scroll_content_layout.addWidget(self.add_component_button, alignment=Qt.AlignCenter)
-
-        # Re-add the navigation buttons layout
         self.scroll_content_layout.addLayout(self.button_h_layout)
 
         self.scroll_area.widget().updateGeometry()
@@ -485,6 +546,23 @@ class AuxiliaryWorks(QWidget):
             component_to_remove.deleteLater()
             self.scroll_area.widget().updateGeometry()
             self.scroll_area.widget().adjustSize()
+    
+    def collect_data(self):
+        all_data = []
+        for component_widget in self.component_widgets:
+            component_data = component_widget.collect_data()
+            all_data.append(component_data)
+        return all_data
+    
+    def save_data(self):
+        data = self.collect_data()
+        print("\nCollected Data from UI:",data)    
+
+        self.database_manager.input_data_row(KEY_SUPERSTRUCTURE, data)
+        # calculating total initial cost
+        total_init_cost = self.database_manager.calculate_total_initial_cost()
+        # Update Results Dict
+        self.parent.results[COST_TOTAL_INIT_CONST] = float(total_init_cost)
 
     def expand_scroll_area(self):
         self.central_widget.layout().invalidate()
@@ -492,30 +570,3 @@ class AuxiliaryWorks(QWidget):
     def close_widget(self):
         self.closed.emit()
         self.setParent(None)
-        
-#----------------Standalone-Test-Code--------------------------------
-
-# class MyMainWindow(QMainWindow):
-#     def __init__(self):
-#         super().__init__()
-
-#         self.setStyleSheet("border: none")
-
-#         self.central_widget = QWidget()
-#         self.central_widget.setObjectName("central_widget")
-#         self.setCentralWidget(self.central_widget)
-
-#         self.main_h_layout = QHBoxLayout(self.central_widget)
-#         self.main_h_layout.addStretch(1)
-
-#         self.main_h_layout.addWidget(AuxiliaryWorks(), 2)
-
-#         self.setWindowState(Qt.WindowMaximized)
-
-
-# if __name__ == "__main__":
-#     QCoreApplication.setAttribute(Qt.AA_DontShowIconsInMenus, False)
-#     app = QApplication(sys.argv)
-#     window = MyMainWindow()
-#     window.show()
-#     sys.exit(app.exec())

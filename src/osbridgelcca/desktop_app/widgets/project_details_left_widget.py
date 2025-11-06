@@ -9,6 +9,7 @@ from widgets.structure_works_data.super_structure_widget import SuperStructure
 from widgets.structure_works_data.sub_structure_widget import SubStructure
 from widgets.structure_works_data.auxiliary_works_widget import AuxiliaryWorks
 from PySide6.QtWidgets import QStackedWidget
+from .utils.data import *
 
 class ProjectDetailsLeft(QWidget):
     closed = Signal()
@@ -21,7 +22,7 @@ class ProjectDetailsLeft(QWidget):
         self.parent = parent
 
         self.current_selected_button = None
-        self.all_param_buttons = []
+        self.all_param_buttons = {}
 
         self.setObjectName("left_panel_widget")
         self.setStyleSheet("""
@@ -220,14 +221,14 @@ class ProjectDetailsLeft(QWidget):
         unselected_sub_icon = QIcon("resources/play-button-arrowhead.png")
 
         self.current_selected_button = None
-        self.all_param_buttons = []
+        self.all_param_buttons = {}
         button_data = {
-            "Structure Works Data": ["Foundation", "Super-Structure", "Sub-Structure", "Miscellaneous"],
-            "Financial Data": [],
-            "Carbon Emission Data": ["Carbon Emission Cost Data"],
-            "Bridge and Traffic Data": [],
-            "Maintenance and Repair": [],
-            "Demolition and Recycling": []
+            KEY_STRUCTURE_WORKS_DATA: [KEY_FOUNDATION, KEY_SUPERSTRUCTURE, KEY_SUBSTRUCTURE, KEY_AUXILIARY],
+            KEY_FINANCIAL: [],
+            KEY_CARBON_EMISSION: [KEY_CARBON_EMISSION_COST],
+            KEY_BRIDGE_TRAFFIC: [],
+            KEY_MAINTAINANCE_REPAIR: [],
+            KEY_DEMOLITION_RECYCLE: []
         }
         for label, sublabels in button_data.items():
             btn = QPushButton(label)
@@ -236,11 +237,12 @@ class ProjectDetailsLeft(QWidget):
             btn.setProperty("expanded", False)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setLayoutDirection(Qt.LeftToRight)
+            btn.setFocusPolicy(Qt.StrongFocus)
             btn.setIcon(unselected_unexpanded_icon)
             btn.setIconSize(QSize(10, 10))
             btn.clicked.connect(lambda checked ,b=btn ,name=label: self.show_structure_widget(name, b))
             scroll_content_layout.addWidget(btn)
-            self.all_param_buttons.append(btn)
+            self.all_param_buttons[label] = btn
             if sublabels:
                 sub_widgets = []
                 for sublabel in sublabels:
@@ -249,13 +251,14 @@ class ProjectDetailsLeft(QWidget):
                     sub_btn.setProperty("selected", False)
                     sub_btn.setIcon(unselected_sub_icon)
                     sub_btn.setIconSize(QSize(10, 10))
+                    sub_btn.setFocusPolicy(Qt.StrongFocus)
                     sub_btn.setCursor(Qt.CursorShape.PointingHandCursor)
                     sub_btn.setLayoutDirection(Qt.LeftToRight)
                     sub_btn.setVisible(False)
                     sub_btn.clicked.connect(lambda checked ,b=sub_btn, name=sublabel: self.show_structure_widget(name,b))
                     scroll_content_layout.addWidget(sub_btn)
                     sub_widgets.append(sub_btn)
-                    self.all_param_buttons.append(sub_btn)
+                    self.all_param_buttons[sublabel] = sub_btn                
                 
                 def make_toggle(button, sub_widgets):
                     def toggle():
@@ -325,7 +328,7 @@ class ProjectDetailsLeft(QWidget):
         """
         Handles the visual selection state of buttons in the side panel.
         """
-        for b in self.all_param_buttons:
+        for b in self.all_param_buttons.values():
             b.setProperty("selected", False)
             b.style().unpolish(b)
             b.style().polish(b)

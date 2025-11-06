@@ -2,26 +2,28 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
 from PySide6.QtGui import QIcon
+from .utils.data import *
 import sys
 import os
 
 class ComponentWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-
         self.init_ui()
-
     def init_ui(self):
         self.component_first_scroll_content_layout = QVBoxLayout(self) # Set QVBoxLayout directly on self
         self.component_first_scroll_content_layout.setContentsMargins(10, 10, 10, 10)
         self.component_first_scroll_content_layout.setSpacing(10)
 
-
-
 class MaintenanceRepairData(QWidget):
     closed = Signal()
-    def __init__(self, parent=None):
+    next = Signal(str)
+    back = Signal(str)
+    def __init__(self, database, parent=None):
         super().__init__()
+        self.parent = parent
+        self.database_manager = database
+        self.widget = []
 
         self.component_widgets = []
 
@@ -176,6 +178,7 @@ class MaintenanceRepairData(QWidget):
         label1 = QLabel("Periodic Maintenance Cost rate as\npercentage to total construction\ncost")
         label1.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         pmc_input = QLineEdit()
+        self.widget.append(pmc_input)
         pmc_input.setAlignment(Qt.AlignmentFlag.AlignTop)
         pmc_input.setFixedWidth(field_width)
         pmc_input.setText("0.555")
@@ -197,6 +200,7 @@ class MaintenanceRepairData(QWidget):
         label2 = QLabel("Annual Routine Inspection cost rate\nas percentage of total construction\ncost")
         label2.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         ari_input = QLineEdit()
+        self.widget.append(ari_input)
         ari_input.setAlignment(Qt.AlignmentFlag.AlignTop)
         ari_input.setFixedWidth(field_width)
         ari_input.setText("1")
@@ -218,6 +222,7 @@ class MaintenanceRepairData(QWidget):
         label3 = QLabel("Repair and Rehabilitation cost rate as\npercentage of total construction cost")
         label3.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         rr_input = QLineEdit()
+        self.widget.append(rr_input)
         rr_input.setAlignment(Qt.AlignmentFlag.AlignTop)
         rr_input.setFixedWidth(field_width)
         rr_input.setText("10")
@@ -239,6 +244,7 @@ class MaintenanceRepairData(QWidget):
         label4 = QLabel("Frequency of Periodic Maintenance")
         label4.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         fpm_input = QLineEdit()
+        self.widget.append(fpm_input)
         fpm_input.setAlignment(Qt.AlignmentFlag.AlignTop)
         fpm_input.setFixedWidth(field_width)
         fpm_input.setText("5")
@@ -260,6 +266,7 @@ class MaintenanceRepairData(QWidget):
         label5 = QLabel("Frequency of Routine Inspection")
         label5.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         fri_input = QLineEdit()
+        self.widget.append(fri_input)
         fri_input.setAlignment(Qt.AlignmentFlag.AlignTop)
         fri_input.setFixedWidth(field_width)
         fri_input.setText("1")
@@ -291,10 +298,13 @@ class MaintenanceRepairData(QWidget):
 
         back_button = QPushButton("Back")
         back_button.setObjectName("nav_button")
+        back_button.clicked.connect(lambda: self.back.emit(KEY_MAINTAINANCE_REPAIR))
         self.button_h_layout.addWidget(back_button)
 
         next_button = QPushButton("Next")
         next_button.setObjectName("nav_button")
+        next_button.clicked.connect(self.collect_data)
+        next_button.clicked.connect(lambda: self.next.emit(KEY_MAINTAINANCE_REPAIR))
         self.button_h_layout.addWidget(next_button)
 
 
@@ -310,6 +320,39 @@ class MaintenanceRepairData(QWidget):
     def close_widget(self):
         self.closed.emit()
         self.setParent(None)
+
+
+    def collect_data(self):
+        data = []
+        for widget in self.widget:
+            if isinstance(widget, QComboBox):
+                value = widget.currentText()
+            elif isinstance(widget, QLineEdit):
+                value = widget.text() if widget.text() != "" else "0"
+            data.append(value)
+
+        print("Collected Data from UI:",data)     
+
+        # Periodic Maintenance Cost Calculation
+        total_initial_construction_cost = self.parent.results.get(COST_TOTAL_INIT_CONST)
+        cost = self.database_manager.periodic_maintainance_cost(data, total_initial_construction_cost)
+        # Update Results Dict
+        self.parent.results[COST_PERIODIC_MAINTAINANCE] = cost
+
+        # Routine Inspection Cost Calculation
+        cost = self.database_manager.routine_inspection_cost(total_initial_construction_cost)
+        # Update Results Dict
+        self.parent.results[COST_TOTAL_ROUTINE_INSPECTION] = cost
+
+        # Repair and Rehabilitation Cost Calculation
+        cost = self.database_manager.repair_and_rehabilitation_cost(total_initial_construction_cost)
+        # Update Results Dict
+        self.parent.results[COST_REPAIR_REHAB] = cost
+
+        # Periodic Maintenance Carbon Emission Cost Calculation (Concrete only)
+        cost = self.database_manager.periodic_maintainnce_carbon_emission_cost(data)
+        # Update Results Dict
+        self.parent.results[COST_PERIODIC_MAINTAINANCE_CARBON_EMISSION] = cost
 
 #----------------Standalone-Test-Code--------------------------------
 
