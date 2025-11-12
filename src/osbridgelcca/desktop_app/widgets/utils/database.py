@@ -158,7 +158,7 @@ class DatabaseManager:
         self.conn.commit()
         return component_id
     
-    def input_data_row(self, work_type: str, rows_data: List[Dict]) -> int:
+    def input_data_row(self, work_type: str, rows_data: List[Dict]) -> List[int]:
         """
         Input complete data row with structure work and multiple components
         
@@ -167,31 +167,36 @@ class DatabaseManager:
             rows_data: List of dictionaries containing component data
         
         Returns:
-            comp_id: The auto-generated component ID from struct_works_data
+            List of comp_id values created in struct_works_data for the provided rows
         
         Example:
             rows_data = [
-                {
-                    KEY_COMPONENT: "Pile",
-                    KEY_TYPE: "Steel Re",
-                    KEY_GRADE: "Fe415",
-                    KEY_QUANTITY: "100",
-                    KEY_UNIT_M3: "cum",
-                    KEY_RATE: "5000.00",
-                    KEY_RATE_DATA_SOURCE: "Market Survey"
-                },
+                [
+                    {
+                        KEY_COMPONENT: "Pile",
+                        KEY_TYPE: "Steel Re",
+                        KEY_GRADE: "Fe415",
+                        KEY_QUANTITY: "100",
+                        KEY_UNIT_M3: "cum",
+                        KEY_RATE: "5000.00",
+                        KEY_RATE_DATA_SOURCE: "Market Survey"
+                    },
+                    ...
+                ],
                 ...
             ]
         """
         if not rows_data:
             raise ValueError("rows_data cannot be empty")
         
+        created_comp_ids: List[int] = []
         for row in rows_data:
             # Get component type from first row
             component_type = row[0].get(KEY_COMPONENT, "Unknown")
 
             # Create structure work entry - this generates comp_id
             comp_id = self.insert_structure_work(work_type, component_type)
+            created_comp_ids.append(comp_id)
 
             # Insert all component rows with the generated comp_id
             for row_dict in row:
@@ -211,6 +216,26 @@ class DatabaseManager:
                     rate=rate,
                     rate_data_source=rate_data_source
                 )
+        
+        return created_comp_ids
+
+    def replace_structure_work_rows(self, work_type: str, rows_data: List[Dict], old_comp_ids: List[int]) -> List[int]:
+        """
+        Delete existing structure work rows by comp_id and insert new rows.
+        
+        Args:
+            work_type: Type of structure work (Foundation, Sub-Structure, etc.)
+            rows_data: New rows data to insert (same structure as input_data_row)
+            old_comp_ids: List of comp_id values to delete before inserting new data
+        
+        Returns:
+            List[int]: Newly created comp_id values for the inserted data
+        """
+        if old_comp_ids:
+            for comp_id in old_comp_ids:
+                self.delete_structure_work(comp_id)
+        
+        return self.input_data_row(work_type, rows_data)
 
     def delete_structure_work(self, comp_id: int):
         """Delete a structure work and all its components (CASCADE)"""

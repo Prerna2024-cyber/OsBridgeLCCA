@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
-from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
+from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame, QMessageBox)
 from PySide6.QtGui import QIcon
 from PySide6.QtGui import QDoubleValidator
 from ..utils.data import *
@@ -9,12 +9,15 @@ import sys
 class ComponentWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.parent_widget = parent
+        self._initializing = True
         self.data = construction_materials.get(KEY_SUBSTRUCTURE)
 
         self.material_rows = []
         self.current_material_row_idx = 1
 
         self.init_ui()
+        self._initializing = False
 
 
     def collect_data(self):
@@ -38,6 +41,17 @@ class ComponentWidget(QWidget):
             rows_data.append(row_dict) 
         return rows_data       
 
+    def _on_value_changed(self, *_args):
+        if getattr(self, "_initializing", False):
+            return
+        if self.parent_widget and hasattr(self.parent_widget, "mark_state_changed"):
+            self.parent_widget.mark_state_changed()
+
+    def _on_type_material_changed(self, text, grade_widget, unit_widget):
+        self.update_comp_grades(text, grade_widget)
+        self.update_comp_units(text, unit_widget)
+        self._on_value_changed()
+
     def init_ui(self):
         self.component_first_scroll_content_layout = QVBoxLayout(self)
         self.component_first_scroll_content_layout.setContentsMargins(10, 10, 10, 10)
@@ -51,6 +65,7 @@ class ComponentWidget(QWidget):
         self.component_combobox = QComboBox()
         self.component_combobox.addItems(self.data.keys())
         self.component_combobox.currentTextChanged.connect(self.update_comp_material)
+        self.component_combobox.currentTextChanged.connect(self._on_value_changed)
         self.component_combobox.setContentsMargins(0, 5, 0, 5)
         component_header_layout.addWidget(self.component_combobox)
 
@@ -105,8 +120,15 @@ class ComponentWidget(QWidget):
         materials = self.data.get(selected_component).keys()
         for i in range(len(self.material_rows)):
             material_combo = self.material_rows[i][KEY_TYPE]
+            grade_combo = self.material_rows[i][KEY_GRADE]
+            unit_combo = self.material_rows[i][KEY_UNIT_M3]
             material_combo.clear()
             material_combo.addItems(materials)
+            current_text = material_combo.currentText()
+            if current_text:
+                self.update_comp_grades(current_text, grade_combo)
+                self.update_comp_units(current_text, unit_combo)
+        self._on_value_changed()
 
     def update_comp_grades(self, selected_material, widget):
         selected_component = self.component_combobox.currentText()
@@ -138,13 +160,11 @@ class ComponentWidget(QWidget):
         row_widgets[KEY_TYPE] = type_material_combo
 
         grade_combo = QComboBox()
-        type_material_combo.currentTextChanged.connect(
-            lambda text, widget=grade_combo: self.update_comp_grades(text, widget)
-        )
         grade_combo.setObjectName("MaterialGridInput")
         grade_combo.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(grade_combo, row_idx, 1)
         row_widgets[KEY_GRADE] = grade_combo
+        grade_combo.currentTextChanged.connect(self._on_value_changed)
 
         quantity_edit = QLineEdit()
         quantity_edit.setValidator(validator)
@@ -153,15 +173,14 @@ class ComponentWidget(QWidget):
         quantity_edit.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(quantity_edit, row_idx, 2)
         row_widgets[KEY_QUANTITY] = quantity_edit
+        quantity_edit.textChanged.connect(self._on_value_changed)
 
         unit_combo_m3 = QComboBox()
-        type_material_combo.currentTextChanged.connect(
-            lambda text, widget=unit_combo_m3: self.update_comp_units(text, widget)
-        )
         unit_combo_m3.setObjectName("MaterialGridInput")
         unit_combo_m3.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(unit_combo_m3, row_idx, 3)
         row_widgets[KEY_UNIT_M3] = unit_combo_m3
+        unit_combo_m3.currentTextChanged.connect(self._on_value_changed)
 
         rate_edit = QLineEdit()
         rate_edit.setValidator(validator)
@@ -170,12 +189,14 @@ class ComponentWidget(QWidget):
         rate_edit.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(rate_edit, row_idx, 4)
         row_widgets[KEY_RATE] = rate_edit
+        rate_edit.textChanged.connect(self._on_value_changed)
 
         rate_data_source_edit = QLineEdit()
         rate_data_source_edit.setObjectName("MaterialGridInput")
         rate_data_source_edit.setFixedWidth(fixed_input_width)
         self.material_grid_layout.addWidget(rate_data_source_edit, row_idx, 5)
         row_widgets[KEY_RATE_DATA_SOURCE] = rate_data_source_edit
+        rate_data_source_edit.textChanged.connect(self._on_value_changed)
 
         remove_button = QPushButton("x")
         remove_button.setFixedSize(24, 24)
@@ -200,10 +221,16 @@ class ComponentWidget(QWidget):
         self.material_grid_layout.addWidget(remove_button, row_idx, 6)
         row_widgets['remove_button'] = remove_button
 
+        type_material_combo.currentTextChanged.connect(
+            lambda text, grade_widget=grade_combo, unit_widget=unit_combo_m3: self._on_type_material_changed(text, grade_widget, unit_widget)
+        )
+
         self.material_rows.append(row_widgets)
         self.current_material_row_idx += 1
         self.updateGeometry()
         self.adjustSize()
+        self._on_type_material_changed(type_material_combo.currentText(), grade_combo, unit_combo_m3)
+        self._on_value_changed()
 
 
     def remove_material_row_by_widgets(self, row_widgets_to_remove):
@@ -254,6 +281,7 @@ class ComponentWidget(QWidget):
         self.update()
         self.material_grid_layout.invalidate()
         self.adjustSize()
+        self._on_value_changed()
 
 class SubStructure(QWidget):
     closed = Signal()
@@ -262,8 +290,12 @@ class SubStructure(QWidget):
     def __init__(self, database, parent=None):
         super().__init__()
         self.database_manager = database
+        # Track inserted comp_id values for replace-on-save
+        self.data_id = []
         self.setObjectName("central_panel_widget")
         self.component_widgets = []
+        self._initializing = True
+        self.state_changed = False
         self.setStyleSheet("""
             #central_panel_widget {
                 background-color: #F8F8F8;
@@ -485,14 +517,14 @@ class SubStructure(QWidget):
 
         next_button = QPushButton("Next")
         next_button.setObjectName("nav_button")
-        next_button.clicked.connect(lambda: self.next.emit(KEY_SUBSTRUCTURE))
-        next_button.clicked.connect(self.save_data)
+        next_button.clicked.connect(self.on_next_clicked)
         self.button_h_layout.addWidget(next_button)
 
         self.add_component_layout()
 
         self.scroll_content_layout.addLayout(self.button_h_layout)
         left_panel_vlayout.addWidget(self.scroll_area)
+        self._initializing = False
 
     def add_component_layout(self):
         new_component = ComponentWidget(self)
@@ -512,6 +544,7 @@ class SubStructure(QWidget):
 
         self.scroll_area.widget().updateGeometry()
         self.scroll_area.widget().adjustSize()
+        self.mark_state_changed()
 
     def remove_component_layout(self, component_to_remove):
         if component_to_remove in self.component_widgets:
@@ -520,6 +553,7 @@ class SubStructure(QWidget):
             component_to_remove.deleteLater()
             self.scroll_area.widget().updateGeometry()
             self.scroll_area.widget().adjustSize()
+            self.mark_state_changed()
 
     def collect_data(self):
         all_data = []
@@ -528,10 +562,32 @@ class SubStructure(QWidget):
             all_data.append(component_data)
         return all_data
     
+    def mark_state_changed(self):
+        if self._initializing:
+            return
+        self.state_changed = True
+    
     def save_data(self):
         data = self.collect_data()
         print("\nCollected Data from UI:",data)
-        self.database_manager.input_data_row(KEY_SUBSTRUCTURE, data)
+        if self.data_id:
+            self.data_id = self.database_manager.replace_structure_work_rows(KEY_SUBSTRUCTURE, data, self.data_id)
+        else:
+            self.data_id = self.database_manager.input_data_row(KEY_SUBSTRUCTURE, data)
+        self.state_changed = False
+    
+    def on_next_clicked(self):
+        if not self.state_changed:
+            self.next.emit(KEY_SUBSTRUCTURE)
+            return
+        if self.data_id:
+            message = "Do you want to replace previous data?"
+        else:
+            message = "Do you want to save data?"
+        reply = QMessageBox.question(self, "Confirm", message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.save_data()
+        self.next.emit(KEY_SUBSTRUCTURE)
 
     def expand_scroll_area(self):
         self.central_widget.layout().invalidate()
