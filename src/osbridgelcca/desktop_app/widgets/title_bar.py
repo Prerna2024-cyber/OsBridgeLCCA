@@ -57,7 +57,7 @@ class CustomTitleBar(QWidget):
         self.layout.addWidget(self.icon_label)
 
         # Middle: Title (centered)
-        self.title_label = QLabel("My Custom App")
+        self.title_label = QLabel("Life Cycle Cost Analysis")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.title_label.setStyleSheet("font-weight: bold;")
         self.layout.addWidget(self.title_label, 1)  # Add stretch factor of 1 to center the title

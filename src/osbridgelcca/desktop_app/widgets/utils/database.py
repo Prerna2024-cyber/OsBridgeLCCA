@@ -234,6 +234,7 @@ class DatabaseManager:
         if old_comp_ids:
             for comp_id in old_comp_ids:
                 self.delete_structure_work(comp_id)
+                self.delete_component(comp_id)
         
         return self.input_data_row(work_type, rows_data)
 

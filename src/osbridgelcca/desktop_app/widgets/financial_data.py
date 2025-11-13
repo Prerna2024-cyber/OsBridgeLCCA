@@ -296,13 +296,15 @@ class FinancialData(QWidget):
     def collect_data(self):
         data = []
         for widget in self.widgets:
-            print(f"Collecting data from widget: {widget}")
             if isinstance(widget, QComboBox):
                 value = widget.currentText()
             elif isinstance(widget, QLineEdit):
                 value = widget.text() if widget.text() != "" else "0"
-            data.append(value)
-        print("Collected Data from UI:",data)     
+            data.append(value)  
+        # percentage
+        data[0] = float(data[0])/100
+        data[1] = float(data[1])/100
+        print("Collected Data from UI:",data)
 
         # calculate time cost
         total_initial_construction_cost = self.parent.results.get(COST_TOTAL_INIT_CONST)
