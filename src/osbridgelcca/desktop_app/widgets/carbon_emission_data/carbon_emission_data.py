@@ -43,100 +43,124 @@ class ComponentWidget(QWidget):
         for item in self.data:
             self.widgets.append(self.add_material_row(item))
             
-
-
-        # # --- Add Material Button ---
-        # self.add_material_button = QPushButton("+ Add Material")
-        # self.add_material_button.setObjectName("add_material_button")
-        # self.add_material_button.clicked.connect(self.add_material_row)
-        # self.component_first_scroll_content_layout.addWidget(self.add_material_button, alignment=Qt.AlignCenter)
+        # --- Add Material Button ---
+        self.add_material_button = QPushButton("+ Add Material")
+        self.add_material_button.setObjectName("add_material_button")
+        self.add_material_button.clicked.connect(self.add_material_row)
+        self.component_first_scroll_content_layout.addWidget(self.add_material_button, alignment=Qt.AlignCenter)
         
-
-    def add_material_row(self, item):
-        row_widgets = [item[1], item[2], item[3], item[4]]
+    def add_material_row(self, item=[]):
         row_idx = self.current_material_row_idx
+        row_widgets = []
 
         # Set fixed width for input widgets.
-        fixed_input_width_combo = 80 # Width for individual combo boxes
-        fixed_input_width_line_edit = 80 # Width for individual line edits
+        fixed_input_width_combo = 80
+        fixed_input_width_line_edit = 80
 
-        type_material_combo = QComboBox()
-        type_material_combo.addItem(item[0])
-        type_material_combo.setObjectName("MaterialGridInput")
-        type_material_combo.setFixedWidth(fixed_input_width_combo)
-        self.material_grid_layout.addWidget(type_material_combo, row_idx, 0, alignment=Qt.AlignmentFlag.AlignHCenter)
+        # Type of Material (Column 0)
+        if item:
+            type_material = QComboBox()
+            type_material.addItem(item[0])
+        else:
+            type_material = QLineEdit()
+            type_material.setPlaceholderText("Material...")
+        type_material.setObjectName("MaterialGridInput")
+        type_material.setFixedWidth(fixed_input_width_combo)
+        self.material_grid_layout.addWidget(type_material, row_idx, 0, alignment=Qt.AlignmentFlag.AlignHCenter)
 
+        # Quantity (Column 1)
         quantity_edit = QLineEdit()
-        quantity_edit.setText(str(item[2]))
-        quantity_edit.setReadOnly(True)
+        if item:
+            quantity_edit.setText(str(item[2]))
+            quantity_edit.setReadOnly(True)
         quantity_edit.setObjectName("MaterialGridInput")
         quantity_edit.setFixedWidth(fixed_input_width_line_edit)
         self.material_grid_layout.addWidget(quantity_edit, row_idx, 1, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        unit_combo_m3 = QComboBox()
-        unit_combo_m3.addItem(str(item[1]))
-        unit_combo_m3.setObjectName("MaterialGridInput")
-        unit_combo_m3.setFixedWidth(fixed_input_width_combo)
-        self.material_grid_layout.addWidget(unit_combo_m3, row_idx, 2, alignment=Qt.AlignmentFlag.AlignHCenter)
+        # Unit (Column 2)
+        if item:
+            unit_combo = QComboBox()
+            unit_combo.addItem(str(item[1]))
+        else:
+            unit_combo = QLineEdit()
+            unit_combo.setPlaceholderText("Unit...")
+        unit_combo.setObjectName("MaterialGridInput")
+        unit_combo.setFixedWidth(fixed_input_width_combo)
+        self.material_grid_layout.addWidget(unit_combo, row_idx, 2, alignment=Qt.AlignmentFlag.AlignHCenter)
 
+        # Build row_widgets array in correct order: [unit, quantity, type, grade, embodied_carbon, carbon_emission]
+        if item:
+            row_widgets = [item[1], item[2], item[3], item[4]]
+        else:
+            row_widgets = [unit_combo, quantity_edit, type_material, None]
 
         # --- Embodied Carbon Energy (LineEdit + QLabel for unit text) - Column 3 ---
         embodied_carbon_layout = QHBoxLayout()
         embodied_carbon_layout.addStretch()
         embodied_carbon_layout.setContentsMargins(0, 0, 0, 0)
-        embodied_carbon_layout.setSpacing(5) # Small spacing between line edit and label
+        embodied_carbon_layout.setSpacing(5)
 
         embodied_carbon_edit = QLineEdit()
-        row_widgets.append(embodied_carbon_edit)
         embodied_carbon_edit.setPlaceholderText("0.00")
         embodied_carbon_edit.setObjectName("MaterialGridInput")
-        embodied_carbon_edit.setFixedWidth(fixed_input_width_combo) # Changed to fixed_input_width_combo
+        embodied_carbon_edit.setFixedWidth(fixed_input_width_combo)
         embodied_carbon_layout.addWidget(embodied_carbon_edit)
 
-        # Replaced QComboBox with QLabel for static text
         embodied_carbon_unit_label = QLabel("(MJ/kg)")
         embodied_carbon_unit_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        embodied_carbon_unit_label.setStyleSheet("color: #3F3E5E; font-size: 11px;") # Style to match other text
+        embodied_carbon_unit_label.setStyleSheet("color: #3F3E5E; font-size: 11px;")
         embodied_carbon_layout.addWidget(embodied_carbon_unit_label)
 
-
         self.material_grid_layout.addLayout(embodied_carbon_layout, row_idx, 3, alignment=Qt.AlignmentFlag.AlignHCenter)
-
+        
+        # Add embodied carbon edit to row_widgets (index 4)
+        row_widgets.append(embodied_carbon_edit)
 
         # --- Carbon Emission Factor (LineEdit + QLabel for unit text) - Column 4 ---
         carbon_emission_layout = QHBoxLayout()
         carbon_emission_layout.setContentsMargins(0, 0, 0, 0)
-        carbon_emission_layout.setSpacing(5) # Small spacing between line edit and label
-
+        carbon_emission_layout.setSpacing(5)
         carbon_emission_layout.addStretch()
 
         carbon_emission_edit = QLineEdit()
-        row_widgets.append(carbon_emission_edit)
         carbon_emission_edit.setPlaceholderText("0.00")
         carbon_emission_edit.setObjectName("MaterialGridInput")
-        carbon_emission_edit.setFixedWidth(fixed_input_width_combo) # Changed to fixed_input_width_combo
+        carbon_emission_edit.setFixedWidth(fixed_input_width_combo)
         carbon_emission_layout.addWidget(carbon_emission_edit)
 
-        # Replaced QComboBox with QLabel for static text
-        carbon_emission_unit_label = QLabel("kg CO2e/kg")
+        # Create the carbon emission unit label
+        if item:
+            carbon_emission_unit_label = QLabel("kg CO2e/" + str(item[1]))
+        else:
+            carbon_emission_unit_label = QLabel("kg CO2e/kg")
         carbon_emission_unit_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        carbon_emission_unit_label.setStyleSheet("color: #3F3E5E; font-size: 11px;") # Style to match other text
+        carbon_emission_unit_label.setStyleSheet("color: #3F3E5E; font-size: 11px;")
         carbon_emission_layout.addWidget(carbon_emission_unit_label)
 
         carbon_emission_layout.addStretch()
-
         self.material_grid_layout.addLayout(carbon_emission_layout, row_idx, 4)
+        
+        # Add carbon emission edit to row_widgets (index 5)
+        row_widgets.append(carbon_emission_edit)
 
+        # Only connect if it's a custom row (unit_combo is QLineEdit, not QComboBox)
+        if not item:  # This means it's a custom material row
+            def update_carbon_unit(text):
+                unit_text = text.strip() if text.strip() else "kg"
+                carbon_emission_unit_label.setText(f"kg CO2e/{unit_text}")
+            
+            unit_combo.textChanged.connect(update_carbon_unit)
 
         self.material_rows.append(row_widgets)
         self.current_material_row_idx += 1
         self.updateGeometry()
         self.adjustSize()
 
+        if not item:
+            # append widget to self.widget
+            self.widgets.append(row_widgets)
+
         return row_widgets
-
-
-
 
     def remove_material_row_by_widgets(self, row_widgets_to_remove):
         if row_widgets_to_remove not in self.material_rows:
@@ -194,10 +218,10 @@ class ComponentWidget(QWidget):
         p = []
         for row in self.widgets:
             data = {
-                KEY_TYPE: row[2],
-                KEY_GRADE: row[3],
-                KEY_QUANTITY: row[1],
-                KEY_UNIT_M3: row[0],
+                KEY_TYPE: row[2].text() if isinstance(row[2], QLineEdit) else row[2],
+                KEY_GRADE: row[3].text() if isinstance(row[3], QLineEdit) else "",
+                KEY_QUANTITY: row[1].text() if isinstance(row[1], QLineEdit) else row[1],
+                KEY_UNIT_M3: row[0].text() if isinstance(row[0], QLineEdit) else row[0],
                 KEY_EMBODIED_CARBON_ENERGY: row[4].text() if row[4].text() else "0",
                 KEY_CARBON_EMISSION_FACTOR: row[5].text() if row[4].text() else "0",
             }

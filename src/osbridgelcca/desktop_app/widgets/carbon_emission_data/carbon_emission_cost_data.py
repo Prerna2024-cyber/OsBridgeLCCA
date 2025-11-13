@@ -275,7 +275,7 @@ class CarbonEmissionCostData(QWidget):
         carbon_cost = float(self.widget[2].text())  # Social Cost of Carbon input
         carbon_emission_cost = self.database_manager.carbon_emission_cost(carbon_cost)
         # Update Results Dict
-        self.parent.results[COST_TOTAL_INIT_CARBON_EMISSION] = carbon_cost
+        self.parent.results[COST_TOTAL_INIT_CARBON_EMISSION] = carbon_emission_cost
 
     def close_widget(self):
         self.closed.emit()

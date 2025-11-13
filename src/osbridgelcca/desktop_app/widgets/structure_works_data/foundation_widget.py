@@ -12,18 +12,17 @@ class ComponentWidget(QWidget):
         self.parent_widget = parent
         self._initializing = True
         self.data = construction_materials.get(KEY_FOUNDATION)
-        self.material_rows = [] # To store references to widgets in each material row
-        self.current_material_row_idx = 1 # Start index for material rows (0 is header)  
+        self.material_rows = []
+        self.current_material_row_idx = 1
 
         self.init_ui()
         self._initializing = False
 
     def init_ui(self):
-        self.component_first_scroll_content_layout = QVBoxLayout(self) # Set QVBoxLayout directly on self
+        self.component_first_scroll_content_layout = QVBoxLayout(self)
         self.component_first_scroll_content_layout.setContentsMargins(10, 10, 10, 10)
         self.component_first_scroll_content_layout.setSpacing(10)
 
-        # Component Label and Dropdown with a remove button
         component_header_layout = QHBoxLayout()
         component_label = QLabel("Component:")
         component_label.setContentsMargins(0, 5, 0, 5)
@@ -36,7 +35,6 @@ class ComponentWidget(QWidget):
         self.component_combobox.setContentsMargins(0, 5, 0, 5)
         component_header_layout.addWidget(self.component_combobox)
 
-        # Add a remove button for the component
         self.remove_component_button = QPushButton("x")
         self.remove_component_button.setFixedSize(24, 24)
         self.remove_component_button.setStyleSheet("""
@@ -62,12 +60,10 @@ class ComponentWidget(QWidget):
 
         self.component_first_scroll_content_layout.addLayout(component_header_layout)
 
-        # --- Material Details Grid Layout ---
         self.material_grid_layout = QGridLayout()
         self.material_grid_layout.setHorizontalSpacing(10)
         self.material_grid_layout.setVerticalSpacing(5)
 
-        # Header Row
         headers = ["Type of Material", "Grade", "Quantity", "Unit", "Rate", "Rate Data Source"]
         for col, header_text in enumerate(headers):
             label = QLabel(header_text)
@@ -75,23 +71,32 @@ class ComponentWidget(QWidget):
             label.setObjectName("MaterialGridLabel")
             self.material_grid_layout.addWidget(label, 0, col)
 
-        # Column stretch factors are removed as all input widgets will now have fixed widths.
-        # This allows the grid to size columns based on the fixed widget sizes and spacing.
-
         self.component_first_scroll_content_layout.addLayout(self.material_grid_layout)
 
-        # Add initial two material rows
         self.add_material_row()
         self.add_material_row()
 
         self.update_comp_material(self.component_combobox.currentText())
 
-        # --- Add Material Button ---
         self.add_material_button = QPushButton("+ Add Material")
         self.add_material_button.setObjectName("add_material_button")
         self.add_material_button.clicked.connect(self.add_material_row)
         self.component_first_scroll_content_layout.addWidget(self.add_material_button, alignment=Qt.AlignCenter)
         
+    def set_locked(self, locked):
+        self.component_combobox.setEnabled(not locked)
+        self.add_material_button.setEnabled(not locked)
+        self.remove_component_button.setEnabled(not locked)
+        
+        for row in self.material_rows:
+            row[KEY_TYPE].setEnabled(not locked)
+            row[KEY_GRADE].setEnabled(not locked)
+            row[KEY_QUANTITY].setEnabled(not locked)
+            row[KEY_UNIT_M3].setEnabled(not locked)
+            row[KEY_RATE].setEnabled(not locked)
+            row[KEY_RATE_DATA_SOURCE].setEnabled(not locked)
+            row['remove_button'].setEnabled(not locked)
+    
     def collect_data(self):
         rows_data = []
         for row in self.material_rows:
@@ -152,15 +157,12 @@ class ComponentWidget(QWidget):
 
     def add_material_row(self):
         validator = QDoubleValidator()
-        validator.setRange(0.0, 999999.99, 2)
+        validator.setRange(0.0, 9999999.999, 3)
         validator.setBottom(0.0)
         validator.setNotation(QDoubleValidator.Notation.StandardNotation)
     
         row_widgets = {}
         row_idx = self.current_material_row_idx
-
-        # Set fixed width for all input widgets to 80px, as requested.
-        # Note: This might make wider text truncate or appear cramped depending on content.
         fixed_input_width = 80
 
         type_material_combo = QComboBox()
@@ -187,8 +189,8 @@ class ComponentWidget(QWidget):
 
         unit_combo_m3 = QComboBox()
         unit_combo_m3.setObjectName("MaterialGridInput")
-        unit_combo_m3.setFixedWidth(fixed_input_width) # Previously 80, now consistent with others
-        self.material_grid_layout.addWidget(unit_combo_m3, row_idx, 3) # Directly add, no extra layout
+        unit_combo_m3.setFixedWidth(fixed_input_width)
+        self.material_grid_layout.addWidget(unit_combo_m3, row_idx, 3)
         row_widgets[KEY_UNIT_M3] = unit_combo_m3
         unit_combo_m3.currentTextChanged.connect(self._on_value_changed)
 
@@ -238,9 +240,18 @@ class ComponentWidget(QWidget):
 
         self.material_rows.append(row_widgets)
         self.current_material_row_idx += 1
-        self.updateGeometry() # Call updateGeometry on self, not on the scroll content widget
-        self.adjustSize() # Adjust the size of the component widget
-        self._on_type_material_changed(type_material_combo.currentText(), grade_combo, unit_combo_m3)
+
+        selected_component = self.component_combobox.currentText()
+        materials = list(self.data.get(selected_component, {}).keys())
+        type_material_combo.addItems(materials)
+        
+        if materials:
+            first_material = materials[0]
+            self.update_comp_grades(first_material, grade_combo)
+            self.update_comp_units(first_material, unit_combo_m3)
+
+        self.updateGeometry()
+        self.adjustSize()
         self._on_value_changed()
 
 
@@ -251,7 +262,7 @@ class ComponentWidget(QWidget):
         row_idx_in_grid = -1
         for i, row_dict in enumerate(self.material_rows):
             if row_dict == row_widgets_to_remove:
-                row_idx_in_grid = i + 1  # +1 because row 0 is header
+                row_idx_in_grid = i + 1
                 break
 
         if row_idx_in_grid == -1:
@@ -288,10 +299,10 @@ class ComponentWidget(QWidget):
                         self.material_grid_layout.removeItem(layout)
                         self.material_grid_layout.addLayout(layout, r_idx, c_idx)
 
-        self.updateGeometry() # Call updateGeometry on self
-        self.update() # Call update on self
+        self.updateGeometry()
+        self.update()
         self.material_grid_layout.invalidate()
-        self.adjustSize() # Adjust the size of the component widget
+        self.adjustSize()
         self._on_value_changed()
 
 class Foundation(QWidget):
@@ -301,12 +312,14 @@ class Foundation(QWidget):
     def __init__(self, database, parent=None):
         super().__init__()
         self.database_manager = database
-        # Track inserted comp_id values for replace-on-save
         self.data_id = []
         self.setObjectName("central_panel_widget")
-        self.component_widgets = [] # To store references to each ComponentWidget instance
+        self.component_widgets = []
         self._initializing = True
-        self.state_changed = False
+        self.state_changed = True
+        self.is_first_visit = True
+        self.is_locked = False
+        
         self.setStyleSheet("""
             #central_panel_widget {
                 background-color: #F8F8F8;
@@ -323,7 +336,6 @@ class Foundation(QWidget):
             }
 
             QScrollArea {
-
                 background-color: transparent;
                 outline: none;
             }
@@ -405,38 +417,59 @@ class Foundation(QWidget):
                 border-color: #606060;
             }
 
-            /* Styling for component_first_widget (the container for the nested scroll area) */
             #component_first_widget {
                 background-color: transparent;
-                margin-top: 10px; /* Add some space above each component block */
+                margin-top: 10px;
             }
 
-            #component_first_scroll_content_widget { /* This now applies directly to ComponentWidget itself */
+            #component_first_scroll_content_widget {
                 background-color: #FFFFFF;
                 padding: 10px;
-
                 border-radius: 8px;
             }
 
-            /* Updated Styling for navigation buttons to match the Add Material/Component buttons */
             QPushButton#nav_button {
-                background-color: #FFFFFF; /* White background */
-                border: 1px solid #E0E0E0; /* Light grey border */
-                border-radius: 8px; /* Slightly more rounded corners */
-                color: #3F3E5E; /* Dark text color */
-                padding: 6px 15px; /* Increased padding */
+                background-color: #FFFFFF;
+                border: 1px solid #E0E0E0;
+                border-radius: 8px;
+                color: #3F3E5E;
+                padding: 6px 15px;
                 text-align: center;
-                min-width: 80px; /* Ensure a minimum width */
+                min-width: 80px;
             }
             QPushButton#nav_button:hover {
-                background-color: #F8F8F8; /* Very subtle light grey on hover */
-                border-color: #C0C0C0; /* Darker border on hover */
+                background-color: #F8F8F8;
+                border-color: #C0C0C0;
             }
             QPushButton#nav_button:pressed {
-                background-color: #E8E8E8; /* Darker grey on pressed */
-                border-color: #A0A0A0; /* Even darker border */
+                background-color: #E8E8E8;
+                border-color: #A0A0A0;
             }
-            /* Styling for QComboBox */
+            
+            QPushButton#lock_button {
+                background-color: #FFFFFF;
+                border: 1px solid #E0E0E0;
+                border-radius: 12px;
+                color: #3F3E5E;
+                padding: 2px 2px;
+                text-align: center;
+                font-weight: bold;
+            }
+            QPushButton#lock_button:hover {
+                background-color: #F8F8F8;
+                border-color: #C0C0C0;
+            }
+            QPushButton#lock_button[locked="true"] {
+                background-color: #FFE0E0;
+                border-color: #FF9999;
+                color: #CC0000;
+            }
+            QPushButton#lock_button[locked="false"] {
+                background-color: #E0FFE0;
+                border-color: #99FF99;
+                color: #00AA00;
+            }
+            
             QComboBox {
                 border: 1px solid #DDDCE0;
                 border-radius: 10px;
@@ -465,7 +498,6 @@ class Foundation(QWidget):
                 background-color: #FDEFEF;
             }
 
-            /* Styling for material grid elements */
             #MaterialGridLabel {
                 font-weight: bold;
                 color: #3F3E5E;
@@ -482,27 +514,49 @@ class Foundation(QWidget):
                 border: 1px solid #DDDCE0;
                 background-color: #FFFFFF;
             }
-            /* IMPROVED CSS FOR ADD MATERIAL/COMPONENT BUTTONS */
+            #MaterialGridInput:disabled {
+                background-color: #F0F0F0;
+                color: #888888;
+            }
+            
             QPushButton#add_material_button, QPushButton#add_component_button {
-                background-color: #FFFFFF; /* White background */
-                border: 1px solid #E0E0E0; /* Light grey border */
-                border-radius: 8px; /* Slightly more rounded corners */
-                color: #3F3E5E; /* Dark text color */
-                padding: 6px 15px; /* Increased padding */
+                background-color: #FFFFFF;
+                border: 1px solid #E0E0E0;
+                border-radius: 8px;
+                color: #3F3E5E;
+                padding: 6px 15px;
                 text-align: center;
             }
             QPushButton#add_material_button:hover, QPushButton#add_component_button:hover {
-                background-color: #F8F8F8; /* Very subtle light grey on hover */
-                border-color: #C0C0C0; /* Darker border on hover */
+                background-color: #F8F8F8;
+                border-color: #C0C0C0;
             }
             QPushButton#add_material_button:pressed, QPushButton#add_component_button:pressed {
-                background-color: #E8E8E8; /* Darker grey on pressed */
-                border-color: #A0A0A0; /* Even darker border */
+                background-color: #E8E8E8;
+                border-color: #A0A0A0;
+            }
+            QPushButton#add_material_button:disabled, QPushButton#add_component_button:disabled {
+                background-color: #F0F0F0;
+                color: #AAAAAA;
+                border-color: #D0D0D0;
             }
         """)
+        
         left_panel_vlayout = QVBoxLayout(self)
-        left_panel_vlayout.setContentsMargins(0, 0, 0, 0)
+        left_panel_vlayout.setContentsMargins(0,0,0,0)
         left_panel_vlayout.setSpacing(0)
+
+        lock_hlayout = QHBoxLayout()
+        lock_hlayout.setContentsMargins(0,2,2,0)
+        lock_hlayout.setSpacing(0)
+        lock_hlayout.addStretch()
+
+        self.lock_button = QPushButton("🔓")
+        self.lock_button.setObjectName("lock_button")
+        self.lock_button.setFixedSize(24, 24)
+        self.lock_button.setProperty("locked", "false")
+        self.lock_button.clicked.connect(self.toggle_lock)
+        lock_hlayout.addWidget(self.lock_button)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
@@ -516,31 +570,56 @@ class Foundation(QWidget):
         self.scroll_content_layout.setContentsMargins(0,0,0,0)
         self.scroll_content_layout.setSpacing(0)
 
-        # Create the Add Component button and connect it
+        self.scroll_content_layout.addLayout(lock_hlayout)
+
         self.add_component_button = QPushButton("+ Add Component")
         self.add_component_button.setObjectName("add_component_button")
         self.add_component_button.clicked.connect(self.add_component_layout)
 
-        # Create the navigation buttons layout
         self.button_h_layout = QHBoxLayout()
         self.button_h_layout.setSpacing(10)
         self.button_h_layout.setContentsMargins(10,10,10,10)
 
-        # Adjust these stretch factors to control the position
-        self.button_h_layout.addStretch(6) # Larger stretch on the left to push it more right
+        self.button_h_layout.addStretch(6)
 
         next_button = QPushButton("Next")
         next_button.setObjectName("nav_button")
         next_button.clicked.connect(self.on_next_clicked)
         self.button_h_layout.addWidget(next_button)
 
-        # Add the initial component layout
         self.add_component_layout()
 
-        # Add initial spacing before the navigation buttons
         self.scroll_content_layout.addLayout(self.button_h_layout)
         left_panel_vlayout.addWidget(self.scroll_area)
         self._initializing = False
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self.is_first_visit:
+            self.set_form_locked(True)
+        else:
+            self.is_first_visit = False
+
+    def toggle_lock(self):
+        self.set_form_locked(not self.is_locked)
+    
+    def set_form_locked(self, locked):
+        self.is_locked = locked
+        
+        if locked:
+            self.lock_button.setText("🔒")
+            self.lock_button.setProperty("locked", "true")
+        else:
+            self.lock_button.setText("🔓")
+            self.lock_button.setProperty("locked", "false")
+        
+        self.lock_button.style().unpolish(self.lock_button)
+        self.lock_button.style().polish(self.lock_button)
+        
+        for component_widget in self.component_widgets:
+            component_widget.set_locked(locked)
+        
+        self.add_component_button.setEnabled(not locked)
 
     def collect_data(self):
         all_data = []
@@ -581,20 +660,17 @@ class Foundation(QWidget):
         self.component_widgets.append(new_component)
         new_component.remove_component_button.clicked.connect(lambda: self.remove_component_layout(new_component))
 
-        # Temporarily remove button_h_layout and add_component_button for insertion
         if self.scroll_content_layout.indexOf(self.add_component_button) != -1:
             self.scroll_content_layout.removeWidget(self.add_component_button)
         if self.scroll_content_layout.indexOf(self.button_h_layout) != -1:
             self.scroll_content_layout.removeItem(self.button_h_layout)
 
-        # Insert the new component
         self.scroll_content_layout.addWidget(new_component)
-
-        # Re-add the 'Add Component' button
         self.scroll_content_layout.addWidget(self.add_component_button, alignment=Qt.AlignCenter)
-
-        # Re-add the navigation buttons layout
         self.scroll_content_layout.addLayout(self.button_h_layout)
+
+        if self.is_locked:
+            new_component.set_locked(True)
 
         self.scroll_area.widget().updateGeometry()
         self.scroll_area.widget().adjustSize()
@@ -615,30 +691,3 @@ class Foundation(QWidget):
     def close_widget(self):
         self.closed.emit()
         self.setParent(None)
-
-#----------------Standalone-Test-Code--------------------------------
-
-# class MyMainWindow(QMainWindow):
-#     def __init__(self):
-#         super().__init__()
-
-#         self.setStyleSheet("border: none")
-
-#         self.central_widget = QWidget()
-#         self.central_widget.setObjectName("central_widget")
-#         self.setCentralWidget(self.central_widget)
-
-#         self.main_h_layout = QHBoxLayout(self.central_widget)
-#         self.main_h_layout.addStretch(1)
-
-#         self.main_h_layout.addWidget(Foundation(), 2)
-
-#         self.setWindowState(Qt.WindowMaximized)
-
-
-# if __name__ == "__main__":
-#     QCoreApplication.setAttribute(Qt.AA_DontShowIconsInMenus, False)
-#     app = QApplication(sys.argv)
-#     window = MyMainWindow()
-#     window.show()
-#     sys.exit(app.exec())

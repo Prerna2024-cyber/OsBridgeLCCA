@@ -17,6 +17,21 @@ class ComponentWidget(QWidget):
         self.init_ui()
         self._initializing = False
 
+    def set_locked(self, locked):
+        """Enable or disable all input widgets based on lock state"""
+        self.component_combobox.setEnabled(not locked)
+        self.add_material_button.setEnabled(not locked)
+        self.remove_component_button.setEnabled(not locked)
+        
+        for row in self.material_rows:
+            row[KEY_TYPE].setEnabled(not locked)
+            row[KEY_GRADE].setEnabled(not locked)
+            row[KEY_QUANTITY].setEnabled(not locked)
+            row[KEY_UNIT_M3].setEnabled(not locked)
+            row[KEY_RATE].setEnabled(not locked)
+            row[KEY_RATE_DATA_SOURCE].setEnabled(not locked)
+            row['remove_button'].setEnabled(not locked)
+
     def collect_data(self):
         rows_data = []
         for row in self.material_rows:
@@ -242,9 +257,14 @@ class ComponentWidget(QWidget):
 
         self.material_rows.append(row_widgets)
         self.current_material_row_idx += 1
+        
+        if materials:
+            first_material = materials[0]
+            self.update_comp_grades(first_material, grade_combo)
+            self.update_comp_units(first_material, unit_combo_m3)
+        
         self.updateGeometry()
         self.adjustSize()
-        self._on_type_material_changed(type_material_combo.currentText(), grade_combo, unit_combo_m3)
         self._on_value_changed()
 
     def remove_material_row_by_widgets(self, row_widgets_to_remove):
@@ -314,9 +334,11 @@ class AuxiliaryWorks(QWidget):
         self.setObjectName("central_panel_widget")
         self.component_widgets = []
         self._initializing = True
-        self.state_changed = False
-        # To store Id'd of current data
+        self.state_changed = True
         self.data_id = []
+        self.is_first_visit = True
+        self.is_locked = False
+        
         self.setStyleSheet("""
             #central_panel_widget {
                 background-color: #F8F8F8;
@@ -443,6 +465,30 @@ class AuxiliaryWorks(QWidget):
                 border-color: #A0A0A0;
             }
             
+            QPushButton#lock_button {
+                background-color: #FFFFFF;
+                border: 1px solid #E0E0E0;
+                border-radius: 12px;
+                color: #3F3E5E;
+                padding: 2px 2px;
+                text-align: center;
+                font-weight: bold;
+            }
+            QPushButton#lock_button:hover {
+                background-color: #F8F8F8;
+                border-color: #C0C0C0;
+            }
+            QPushButton#lock_button[locked="true"] {
+                background-color: #FFE0E0;
+                border-color: #FF9999;
+                color: #CC0000;
+            }
+            QPushButton#lock_button[locked="false"] {
+                background-color: #E0FFE0;
+                border-color: #99FF99;
+                color: #00AA00;
+            }
+            
             QComboBox {
                 border: 1px solid #DDDCE0;
                 border-radius: 10px;
@@ -487,6 +533,10 @@ class AuxiliaryWorks(QWidget):
                 border: 1px solid #DDDCE0;
                 background-color: #FFFFFF;
             }
+            #MaterialGridInput:disabled {
+                background-color: #F0F0F0;
+                color: #888888;
+            }
             
             QPushButton#add_material_button, QPushButton#add_component_button {
                 background-color: #FFFFFF;
@@ -503,6 +553,11 @@ class AuxiliaryWorks(QWidget):
             QPushButton#add_material_button:pressed, QPushButton#add_component_button:pressed {
                 background-color: #E8E8E8;
                 border-color: #A0A0A0;
+            }
+            QPushButton#add_material_button:disabled, QPushButton#add_component_button:disabled {
+                background-color: #F0F0F0;
+                color: #AAAAAA;
+                border-color: #D0D0D0;
             }
         """)
         
@@ -521,6 +576,20 @@ class AuxiliaryWorks(QWidget):
         self.scroll_content_layout = QVBoxLayout(scroll_content_widget)
         self.scroll_content_layout.setContentsMargins(0, 0, 0, 0)
         self.scroll_content_layout.setSpacing(0)
+
+        lock_hlayout = QHBoxLayout()
+        lock_hlayout.setContentsMargins(0,2,2,0)
+        lock_hlayout.setSpacing(0)
+        lock_hlayout.addStretch()
+
+        self.lock_button = QPushButton("🔓")
+        self.lock_button.setObjectName("lock_button")
+        self.lock_button.setFixedSize(24, 24)
+        self.lock_button.setProperty("locked", "false")
+        self.lock_button.clicked.connect(self.toggle_lock)
+        lock_hlayout.addWidget(self.lock_button)
+
+        self.scroll_content_layout.addLayout(lock_hlayout)
 
         self.add_component_button = QPushButton("+ Add Component")
         self.add_component_button.setObjectName("add_component_button")
@@ -547,6 +616,34 @@ class AuxiliaryWorks(QWidget):
         left_panel_vlayout.addWidget(self.scroll_area)
         self._initializing = False
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self.is_first_visit:
+            self.set_form_locked(True)
+        else:
+            self.is_first_visit = False
+
+    def toggle_lock(self):
+        self.set_form_locked(not self.is_locked)
+    
+    def set_form_locked(self, locked):
+        self.is_locked = locked
+        
+        if locked:
+            self.lock_button.setText("🔒")
+            self.lock_button.setProperty("locked", "true")
+        else:
+            self.lock_button.setText("🔓")
+            self.lock_button.setProperty("locked", "false")
+        
+        self.lock_button.style().unpolish(self.lock_button)
+        self.lock_button.style().polish(self.lock_button)
+        
+        for component_widget in self.component_widgets:
+            component_widget.set_locked(locked)
+        
+        self.add_component_button.setEnabled(not locked)
+
     def add_component_layout(self):
         new_component = ComponentWidget(self)
         self.component_widgets.append(new_component)
@@ -562,6 +659,9 @@ class AuxiliaryWorks(QWidget):
         self.scroll_content_layout.addWidget(new_component)
         self.scroll_content_layout.addWidget(self.add_component_button, alignment=Qt.AlignCenter)
         self.scroll_content_layout.addLayout(self.button_h_layout)
+
+        if self.is_locked:
+            new_component.set_locked(True)
 
         self.scroll_area.widget().updateGeometry()
         self.scroll_area.widget().adjustSize()
@@ -614,6 +714,7 @@ class AuxiliaryWorks(QWidget):
         if reply == QMessageBox.StandardButton.Yes:
             self.save_data()
         self.next.emit(KEY_AUXILIARY)
+    
     def expand_scroll_area(self):
         self.central_widget.layout().invalidate()
 

@@ -203,7 +203,7 @@ class DemolitionAndRecyclingData(QWidget):
         self.widgets.append(scrap_value_input)
         scrap_value_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         scrap_value_input.setFixedWidth(field_width)
-        scrap_value_input.setText("50000")
+        scrap_value_input.setText("26000")
         scrap_value_input.setStyleSheet("""
             QLineEdit {
                 border: 1px solid #DDDCE0;
@@ -231,7 +231,7 @@ class DemolitionAndRecyclingData(QWidget):
         self.widgets.append(steel_scrap_input)
         steel_scrap_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         steel_scrap_input.setFixedWidth(field_width)
-        steel_scrap_input.setText("98")
+        steel_scrap_input.setText("95")
         steel_scrap_input.setStyleSheet("""
             QLineEdit {
                 border: 1px solid #DDDCE0;
@@ -246,6 +246,62 @@ class DemolitionAndRecyclingData(QWidget):
         steel_scrap_layout.addWidget(suggested_label3)
         steel_scrap_layout.addStretch(1)
         grid_layout.addWidget(steel_scrap_widget, 2, 1, 1, 1, alignment=Qt.AlignLeft)
+
+        # 4. Scrap Value of Steel Rebar
+        label = QLabel("Scrap Value of Steel Rebar")
+        label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        grid_layout.addWidget(label, 3, 0, 1, 1)
+        scrap_value_widget = QWidget(self.general_widget)
+        scrap_value_layout = QHBoxLayout(scrap_value_widget)
+        scrap_value_layout.setContentsMargins(0,0,0,0)
+        scrap_value_layout.setSpacing(10)
+        scrap_value_input = QLineEdit()
+        self.widgets.append(scrap_value_input)
+        scrap_value_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        scrap_value_input.setFixedWidth(field_width)
+        scrap_value_input.setText("32500")
+        scrap_value_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #DDDCE0;
+                border-radius: 10px;
+                padding: 3px 10px;
+            }
+        """)
+        scrap_value_layout.addWidget(scrap_value_input)
+        scrap_value_layout.addWidget(QLabel("(INR/MT)"))
+        suggested_label2 = QLabel("Suggested")
+        suggested_label2.setStyleSheet("color: #B3AEAE; font-size: 10px;")
+        scrap_value_layout.addWidget(suggested_label2)
+        scrap_value_layout.addStretch(1)
+        grid_layout.addWidget(scrap_value_widget, 3, 1, 1, 1, alignment=Qt.AlignLeft)
+
+        # 4. Steel Rebar Scrap
+        label = QLabel("Steel Rebar Scrap")
+        label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        grid_layout.addWidget(label, 4, 0, 1, 1)
+        steel_scrap_widget = QWidget(self.general_widget)
+        steel_scrap_layout = QHBoxLayout(steel_scrap_widget)
+        steel_scrap_layout.setContentsMargins(0,0,0,0)
+        steel_scrap_layout.setSpacing(10)
+        steel_scrap_input = QLineEdit()
+        self.widgets.append(steel_scrap_input)
+        steel_scrap_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        steel_scrap_input.setFixedWidth(field_width)
+        steel_scrap_input.setText("75")
+        steel_scrap_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #DDDCE0;
+                border-radius: 10px;
+                padding: 3px 10px;
+            }
+        """)
+        steel_scrap_layout.addWidget(steel_scrap_input)
+        steel_scrap_layout.addWidget(QLabel("(%)"))
+        suggested_label3 = QLabel("Suggested")
+        suggested_label3.setStyleSheet("color: #B3AEAE; font-size: 10px;")
+        steel_scrap_layout.addWidget(suggested_label3)
+        steel_scrap_layout.addStretch(1)
+        grid_layout.addWidget(steel_scrap_widget, 4, 1, 1, 1, alignment=Qt.AlignLeft)
 
         self.general_layout.addLayout(grid_layout)
         self.general_layout.addStretch(1)
@@ -292,6 +348,10 @@ class DemolitionAndRecyclingData(QWidget):
             elif isinstance(widget, QLineEdit):
                 value = widget.text()
             data.append(value)
+
+        data[0] = float(data[0])/100
+        data[2] = float(data[2])/100
+        
         print("Collected Data from UI:",data)     
 
         # calculate demolition and disposal cost

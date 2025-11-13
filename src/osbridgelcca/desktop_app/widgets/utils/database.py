@@ -22,7 +22,9 @@ class DatabaseManager:
         self.db_path = db_path
         self.conn = None
         self.create_database(recreate=recreate)
-        self.carbon_cost = 6.3936
+        self.discount_rate = 0
+        self.design_life = 0
+        self.analysis_period = 0
     
     def create_database(self, recreate: bool = True):
         """
@@ -234,6 +236,7 @@ class DatabaseManager:
         if old_comp_ids:
             for comp_id in old_comp_ids:
                 self.delete_structure_work(comp_id)
+                self.delete_component(comp_id)
         
         return self.input_data_row(work_type, rows_data)
 
@@ -246,7 +249,7 @@ class DatabaseManager:
     def delete_component(self, component_id: int):
         """Delete a specific component by its ID"""
         cursor = self.conn.cursor()
-        cursor.execute('DELETE FROM component WHERE id = ?', (component_id,))
+        cursor.execute('DELETE FROM component WHERE comp_id = ?', (component_id,))
         self.conn.commit()
     
     def get_all_structure_works(self) -> List[Tuple]:
@@ -432,7 +435,7 @@ class DatabaseManager:
 
     #========================Calculations========================
 
-    # 1. Called on next from Auxiliary Cost Data.py
+    #(OK) 1. Called on next from Auxiliary Cost Data.py 
     def calculate_total_initial_cost(self) -> float:
         data = self.get_all_materials_info()
         total_cost = 0.0
@@ -445,7 +448,7 @@ class DatabaseManager:
         print("\nTotal Initial Construction Cost:", total_cost)
         return total_cost
     
-    # 3. Called on next from financial_data.py
+    #(OK) 3. Called on next from financial_data.py
     def calculate_time_cost(self, data: List, total_init_construct_cost: float) -> float:
         # Insert financial data into the database
         self._insert_financial_data(data) 
@@ -458,35 +461,21 @@ class DatabaseManager:
         print("\nTime Cost:", time_cost_component.calculate_cost())
         return time_cost_component.calculate_cost()
 
-    # 2. Called on next from carbon_emission_cost_data.py
+    #(OK) 2. Called on next from carbon_emission_cost_data.py
     def carbon_emission_cost(self, carbon_cost: float) -> float:
         # Updated Carbon cost
         self.carbon_cost = carbon_cost
-
-        unit_conversions = {
-            "cum": 2549.25,
-            "kg": 1.0,
-            "mt": 1000.0,
-            "rmt": 1.0,
-            "sqm": 1.0,
-            "ltr": 1.0
-        }
 
         # Get carbon emission data from the database
         data = self.get_carbon_emission_data()
 
         total_carbon_emission_cost= 0.0
         for item in data:
-            total_component = 0.0
             qty = float(item.get(KEY_QUANTITY))
-            unit = item.get(KEY_UNIT_M3)
             emission_factor = float(item.get(KEY_CARBON_EMISSION_FACTOR))
-            # convert quantity to kg
-            qty = qty * unit_conversions.get(unit.lower())
-            total_component += qty                
-            carbon_emission_cost = (total_component * emission_factor) * carbon_cost;
+            carbon_emission_cost = (qty * emission_factor) * carbon_cost;
             total_carbon_emission_cost += carbon_emission_cost
-            print(f"Carbon Emission Cost for {item.get(KEY_TYPE)}:", total_carbon_emission_cost)
+            print(f"Carbon Emission Cost for {item.get(KEY_TYPE)}:", carbon_emission_cost)
         
         print("\nTotal Carbon Emission Cost:", total_carbon_emission_cost)
         return total_carbon_emission_cost
@@ -615,16 +604,16 @@ class DatabaseManager:
         maintenance_cost_rate = PeriodicMaintenanceCost(
             maintenance_cost_rate=float(data[0]),
             construction_cost=total_initial_cost,
-            discount_rate=0.0425,
+            discount_rate=self.discount_rate,
             period=float(data[3]),
-            design_life=50.0
+            design_life=self.design_life
         )
         print("\nPeriodic Maintenance Cost:", maintenance_cost_rate.calculate_cost())  # INR
 
         return maintenance_cost_rate.calculate_cost()
     
     # 7. Periodic Maintenance Carbon Emission Cost Calculation (Concrete only)
-    def periodic_maintainnce_carbon_emission_cost(self, data: List):
+    def periodic_maintainance_carbon_emission_cost(self, data: List):
         unit_conversions = {
             "cum": 2549.25,
             "kg": 1.0,
@@ -647,37 +636,32 @@ class DatabaseManager:
                 # convert quantity to kg
                 qty = qty * unit_conversions.get(unit.lower())
                 maintenance_concrete_emission_factor = item.get(KEY_CARBON_EMISSION_FACTOR)
-                maintenance_concrete_kg += qty            
+                maintenance_concrete_kg += qty          
 
-        maintenance_carbon_cost = 6.3936
-        maintenance_discount_rate = 0.0425
+        maintenance_carbon_cost = self.carbon_cost
         maintenance_period = float(data[3])
-        maintenance_design_life = 50.0
         periodic_maintenance_concrete_carbon_component = PeriodicMaintenanceCarbonCost(
             material_quantity=maintenance_concrete_kg,
             carbon_emission_factor=maintenance_concrete_emission_factor,
             carbon_cost=maintenance_carbon_cost,
-            discount_rate=maintenance_discount_rate,
+            discount_rate=self.discount_rate,
             period=maintenance_period,
-            design_life=maintenance_design_life
+            design_life=self.design_life
         )
         print("\nPeriodic Maintenance Carbon Emission Cost (Concrete only):", periodic_maintenance_concrete_carbon_component.calculate_cost())  # INR
         return periodic_maintenance_concrete_carbon_component.calculate_cost()
 
     # 8. Annual Routine Inspection Cost Calculation
-    def routine_inspection_cost(self, total_initial_construction_cost: float) -> float:
+    def routine_inspection_cost(self, data: List, total_initial_construction_cost: float) -> float:
 
-        inspection_discount_rate = 0.0425
-        inspection_design_life = 50.0
-
-        inspection_rate = 0.01
-        inspection_period = 1.0
+        inspection_rate = float(data[1])
+        inspection_period = float(data[4])
 
         inspection_component = RoutineInspectionCost(
             inspection_cost_rate=inspection_rate,  # Use inspection_rate as inspection cost rate
             construction_cost=total_initial_construction_cost,  # Always use total_initial_construction_cost
-            discount_rate=inspection_discount_rate,
-            design_life=inspection_design_life,
+            discount_rate=self.discount_rate,
+            design_life=self.design_life,
             period=inspection_period  # always annual
         )
         total_routine_inspection_cost = inspection_component.calculate_cost()
@@ -685,57 +669,74 @@ class DatabaseManager:
         return total_routine_inspection_cost
 
     # 9. Repair and Rehabilitation Cost Calculation
-    def repair_and_rehabilitation_cost(self, total_initial_construction_cost: float) -> float:
-        repair_period = 30.0
-        repair_cost_rate = 0.10
-
-        discount_rate = 0.0425
-        design_life = 50.0
+    def repair_and_rehabilitation_cost(self, total_initial_construction_cost: float, data: List) -> float:
+        repair_period = data[5]
+        repair_cost_rate = data[2]
 
         repair_component = RepairAndRehabilitationCost(
             repair_cost_rate=repair_cost_rate,
             construction_cost=total_initial_construction_cost,
-            discount_rate=discount_rate,
+            discount_rate=self.discount_rate,
             period=repair_period,
-            design_life=design_life
+            design_life=self.design_life
         )
         print("\nRepair and Rehabilitation Cost:", repair_component.calculate_cost())  # INR
         return repair_component.calculate_cost()
     
     # 10. Demolition and Disposal Cost Calculation
     def demolition_and_disposal_cost(self, data: List, total_initial_construction_cost: float) -> float:
-        demolition_discount_rate = 0.0425
-        demolition_design_life = 50.0
-        demolition_rate = float(float(data[0])/100)  # e.g., 0.05 for 5%
+        demolition_rate = float(data[0])
 
         demolition_component = DemolitionCost(
             demolition_rate=demolition_rate,
             construction_cost=total_initial_construction_cost,
-            discount_rate=demolition_discount_rate,
-            design_life=demolition_design_life
+            discount_rate=self.discount_rate,
+            design_life=self.design_life
         )
         print("\nDemolition and Disposal Cost:", demolition_component.calculate_cost())  # INR
         return demolition_component.calculate_cost()
 
     # 11. Recycling Cost Calculation
     def recycling_cost(self, data: List) -> float:
-        scrap_value = float(data[1])
-        recycling_design_life = 50.0
-        scrap_rate = 0.98
 
-        discount_rate = 0.0425
+        # To convert to MT
+        unit_conversions = {
+            "kg": 1000.0,
+            "mt": 1.0
+        }
 
-        user_input_steel_quantity_mt = 0.0
+        steel_rebar_quantity = 0
+        struct_steel_quantity = 0
+        # Get carbon emission data from the database
+        data = self.get_carbon_emission_data()
+        for item in data:
+            material = item.get(KEY_TYPE)
+            if material == "Steel Rebar":
+                steel_rebar_quantity += float(item.get(KEY_QUANTITY)) * unit_conversions.get(item.get(KEY_UNIT_M3))
+            elif material == "Structural Steel":
+                struct_steel_quantity += float(item.get(KEY_QUANTITY)) * unit_conversions.get(item.get(KEY_UNIT_M3))
 
-        recycling_component = RecyclingCost(
-            scrap_value=scrap_value,
-            quantity=user_input_steel_quantity_mt,
-            scrap_rate=scrap_rate,
-            discount_rate=discount_rate,
-            design_life=recycling_design_life
+        # Structural Steel-----------recycling-cost-----------------------------------------
+        ss_recycling_component = RecyclingCost(
+            scrap_value=float(data[1]),
+            quantity=struct_steel_quantity,
+            scrap_rate=float(data[2]),
+            discount_rate=self.discount_rate,
+            design_life=self.design_life
         )
-        print("\nRecycling Cost (user-input steel only):", recycling_component.calculate_cost())  # INR
-        return recycling_component.calculate_cost()
+        print("\nRecycling Cost (Structural Steel):", ss_recycling_component.calculate_cost())
+
+        # Steel-rebar-----------------recycling-cost-----------------------------------------
+        sr_recycling_component = RecyclingCost(
+            scrap_value=float(data[3]),
+            quantity=steel_rebar_quantity,
+            scrap_rate=float(data[4]),
+            discount_rate=self.discount_rate,
+            design_life=self.design_life
+        )
+        print("\nRecycling Cost (Steel Rebar):", sr_recycling_component.calculate_cost())
+
+        return sr_recycling_component.calculate_cost() + ss_recycling_component.calculate_cost()
 
     # 12. Reconstruction Cost Calculation 
     def reconstruction_cost(self, initial_construction_cost: float,
@@ -751,15 +752,10 @@ class DatabaseManager:
         reconstruction_time_cost = time_cost
         reconstruction_roaduser_cost = roaduser_cost
         reconstruction_rerouting_carbon_cost = rerouting_carbon_cost
-        reconstruction_design_life = 50.0
 
         reconstruction_result = 0
-        analysis_period = 75.0
 
-        design_life = 50.0
-        discount_rate = 0.0425
-
-        if analysis_period > design_life:
+        if self.analysis_period > self.design_life:
             reconstruction_component = ReconstructionCost(
                 demolition_cost=demolition_cost,
                 reconstruction_cost=reconstruction_cost,
@@ -767,8 +763,8 @@ class DatabaseManager:
                 reconstruction_time_cost=reconstruction_time_cost,
                 reconstruction_roaduser_cost=reconstruction_roaduser_cost,
                 reconstruction_rerouting_carbon_cost=reconstruction_rerouting_carbon_cost,
-                design_life=reconstruction_design_life,
-                discount_rate=discount_rate
+                design_life=self.design_life,
+                discount_rate=self.discount_rate
             )
             reconstruction_result = reconstruction_component.calculate_cost()
         else:

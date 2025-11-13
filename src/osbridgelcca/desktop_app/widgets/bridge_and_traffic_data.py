@@ -1,3 +1,4 @@
+from math import comb
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
@@ -198,7 +199,7 @@ class BridgeAndTrafficData(QWidget):
         grid_layout.setVerticalSpacing(20)
 
         # Number of Lanes
-        label = QLabel("Number of Lanes")
+        label = QLabel("Alternate Road Carriageway")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 0, 0, 1, 1)
 
@@ -234,6 +235,26 @@ class BridgeAndTrafficData(QWidget):
         info_icon.setAlignment(Qt.AlignmentFlag.AlignLeft)
         grid_layout.addWidget(info_icon, 1, 2, 1, 1)
 
+        # Additional Travel Time
+        label = QLabel("Additional Travel Time")
+        label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        grid_layout.addWidget(label, 2, 0, 1, 1)
+        input_widget = QLineEdit(self.general_widget)
+        input_widget.setFixedWidth(self.text_box_width)
+        input_widget.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #DDDCE0;
+                border-radius: 10px;
+                padding: 3px 10px;
+            }
+        """)
+        self.traffic_widgets.append(input_widget)
+        grid_layout.addWidget(input_widget, 2, 1, 1, 1)
+        info_icon = QLabel("(min)")
+        info_icon.setStyleSheet("color: grey; font-size: 14px;")
+        info_icon.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        grid_layout.addWidget(info_icon, 2, 2, 1, 1)
+
         # Road Roughness
         label = QLabel("Road Roughness")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -242,7 +263,8 @@ class BridgeAndTrafficData(QWidget):
         valuer_combo = QComboBox(self.general_widget)
         valuer_combo.setFixedWidth(self.text_box_width)
         valuer_combo.setPlaceholderText("Select")
-        valuer_combo.addItems(self.data[KEY_ROADROUGHNESS][KEY_OPTIONS])
+        valuer_combo.addItems(self.data[KEY_ROADROUGHNESS][KEY_OPTIONS] + ["Custom"])
+        valuer_combo.currentIndexChanged.connect(lambda index,combo=valuer_combo: self.custom_combo_input(index, combo))
         self.traffic_widgets.append(valuer_combo)
         grid_layout.addWidget(valuer_combo, 3, 1, 1, 1)
 
@@ -251,15 +273,16 @@ class BridgeAndTrafficData(QWidget):
         info_icon.setAlignment(Qt.AlignmentFlag.AlignLeft)
         grid_layout.addWidget(info_icon, 3, 2, 1, 1)
 
-        # Road Rise and Fall (RF)
-        label = QLabel("Road Rise and Fall (RF)")
+        # Road Rise
+        label = QLabel("Road Rise")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 4, 0, 1, 1)
 
         valuer_combo = QComboBox(self.general_widget)
         valuer_combo.setFixedWidth(self.text_box_width)
         valuer_combo.setPlaceholderText("Select")
-        valuer_combo.addItems(self.data[KEY_ROAD_RISE_AND_FALL][KEY_OPTIONS])
+        valuer_combo.addItems(self.data[KEY_ROAD_RISE_AND_FALL][KEY_OPTIONS] + ["Custom"])
+        valuer_combo.currentIndexChanged.connect(lambda index,combo=valuer_combo: self.custom_combo_input(index, combo))
         self.traffic_widgets.append(valuer_combo)
         grid_layout.addWidget(valuer_combo, 4, 1, 1, 1)
 
@@ -268,76 +291,112 @@ class BridgeAndTrafficData(QWidget):
         info_icon.setAlignment(Qt.AlignmentFlag.AlignLeft)
         grid_layout.addWidget(info_icon, 4, 2, 1, 1)
 
-
-        # Type of Road
-        label = QLabel("Type of Road")
+        # Road Fall
+        label = QLabel("Road Fall")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 5, 0, 1, 1)
 
         valuer_combo = QComboBox(self.general_widget)
         valuer_combo.setFixedWidth(self.text_box_width)
         valuer_combo.setPlaceholderText("Select")
-        valuer_combo.addItems(self.data[KEY_TYPE_OF_ROAD][KEY_OPTIONS])
+        valuer_combo.addItems(self.data[KEY_ROAD_RISE_AND_FALL][KEY_OPTIONS] + ["Custom"])
+        valuer_combo.currentIndexChanged.connect(lambda index,combo=valuer_combo: self.custom_combo_input(index, combo))
+        self.traffic_widgets.append(valuer_combo)
         grid_layout.addWidget(valuer_combo, 5, 1, 1, 1)
-        self.traffic_widgets.append(valuer_combo)     
 
-        info_icon = QLabel(" ")
+        info_icon = QLabel("(m/km)")
         info_icon.setStyleSheet("color: grey; font-size: 14px;")
         info_icon.setAlignment(Qt.AlignmentFlag.AlignLeft)
         grid_layout.addWidget(info_icon, 5, 2, 1, 1)
 
-        # Annual Increase in Traffic
-        label = QLabel("Annual Increaase in Traffic if Re-Routing duration increases more than a year  ")
-        label.setFixedWidth(200)
-        label.setWordWrap(True)
+        # Type of Road
+        label = QLabel("Type of Road")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 6, 0, 1, 1)
 
         valuer_combo = QComboBox(self.general_widget)
         valuer_combo.setFixedWidth(self.text_box_width)
         valuer_combo.setPlaceholderText("Select")
-        valuer_combo.addItems(self.data[KEY_ANNUAL_INCREASE][KEY_OPTIONS])
-        self.traffic_widgets.append(valuer_combo)
+        valuer_combo.addItems(self.data[KEY_TYPE_OF_ROAD][KEY_OPTIONS])
         grid_layout.addWidget(valuer_combo, 6, 1, 1, 1)
+        self.traffic_widgets.append(valuer_combo)     
 
-        info_icon = QLabel("(%)")
-        info_icon.setStyleSheet("color: grey; font-size: 14px; padding-top: 14px;")
+        info_icon = QLabel(" ")
+        info_icon.setStyleSheet("color: grey; font-size: 14px;")
         info_icon.setAlignment(Qt.AlignmentFlag.AlignLeft)
         grid_layout.addWidget(info_icon, 6, 2, 1, 1)
 
+        # Crash Rate
+        label = QLabel("Crash Rate")
+        label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        grid_layout.addWidget(label, 7, 0, 1, 1)
+        input_widget = QLineEdit(self.general_widget)
+        input_widget.setFixedWidth(self.text_box_width)
+        input_widget.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #DDDCE0;
+                border-radius: 10px;
+                padding: 3px 10px;
+            }
+        """)
+        self.traffic_widgets.append(input_widget)
+        grid_layout.addWidget(input_widget, 7, 1, 1, 1)
+        info_icon = QLabel("(accidents/million km)")
+        info_icon.setStyleSheet("color: grey; font-size: 14px;")
+        info_icon.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        grid_layout.addWidget(info_icon, 7, 2, 1, 1)
+
+
+        # Category of accidents=Start==============================================================
+
         # Composition of Various Vehicles
-        # Remove the old label and vehicle_widget from the grid
-        # Instead, create a horizontal layout for this row
         composition_row_widget = QWidget(self.general_widget)
         composition_row_layout = QHBoxLayout(composition_row_widget)
         composition_row_layout.setContentsMargins(0, 0, 0, 0)
         composition_row_layout.setSpacing(20)  # Space between label and box
-
-        # The label
-        composition_label = QLabel("Composition of Various Vehicles")
-        composition_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        composition_row_layout.addWidget(composition_label, alignment=Qt.AlignTop)
-
+        
         # The white box (vehicle_widget) as before
         vehicle_widget = QWidget(self.general_widget)
-        vehicle_widget.setStyleSheet("background-color: #FFFFFF; border-radius: 10px; border: 1px solid #DDDCE0")
-        vehicle_widget.setFixedWidth(400)
-        vehicle_widget.setFixedHeight(250)
+        vehicle_widget.setStyleSheet("background-color: #FFFFFF; border-radius: 10px; border: 1px solid #DDDCE0;")
         vehicle_layout = QGridLayout(vehicle_widget)
-        vehicle_layout.setContentsMargins(0, 0, 0, 0)
-        # vehicle_layout.setHorizontalSpacing(7)
-        # vehicle_layout.setVerticalSpacing(8)
+        vehicle_layout.setContentsMargins(8, 8, 8, 8)
+        
+        vehicle_type_label = QLabel("Type of Accident")
+        vehicle_type_label.setAlignment(Qt.AlignCenter)
+        vehicle_type_label.setStyleSheet("""
+            QLabel {
+                border: 0px;
+                padding: 3px 10px;
+            }
+        """)
 
-        vehicles = ["Cars", "Buses", "HCV", "MCV", "LCV"]
+        per_dist_label = QLabel("% Accident Distribution")
+        per_dist_label.setAlignment(Qt.AlignCenter)
+        per_dist_label.setStyleSheet("""
+            QLabel {
+                border: 0px;
+                padding: 3px 10px;
+            }
+        """)
+
+        vehicle_layout.addWidget(vehicle_type_label, 0, 0)
+        vehicle_layout.addWidget(per_dist_label, 0, 1)
+
+        vehicles = [
+            "Minor Injury",
+            "Major Injury",
+            "Fatal"
+        ]
+
         for i, vehicle in enumerate(vehicles):
             v_label = QLabel(f"{vehicle}:")
             v_label.setFixedHeight(40)
-            v_label.setFixedWidth(50)
+            v_label.setAlignment(Qt.AlignCenter)
             v_label.setStyleSheet("background-color: #FFFFFF; border: 1px solid #FFFFFF; border-radius: 10px; padding: 10px 10px 10px 1px;")
-            v_input = QLineEdit()
-            self.traffic_widgets.append(v_input)
-            v_input.setFixedWidth(self.text_box_width)
-            v_input.setStyleSheet("""
+            v0_input = QLineEdit()
+            self.traffic_widgets.append(v0_input)
+            v0_input.setFixedWidth(self.text_box_width*2)
+            v0_input.setStyleSheet("""
                 QLineEdit {
                     border: 1px solid #DDDCE0;
                     border-radius: 10px;
@@ -345,17 +404,117 @@ class BridgeAndTrafficData(QWidget):
                     background: #FFFFFF;
                 }
             """)
-            vehicle_layout.addWidget(v_label, i, 0)
-            vehicle_layout.addWidget(v_input, i, 1)
-        
-        v_label1 = QLabel("(PCU/D)")
+            vehicle_layout.addWidget(v_label, i+1, 0)
+            vehicle_layout.addWidget(v0_input, i+1, 1)
+
+        v_label1 = QLabel("")
         v_label1.setStyleSheet(" padding: 10px 10px 10px 1px;")
 
         composition_row_layout.addWidget(vehicle_widget, alignment=Qt.AlignTop)
 
         # Add the composition_row_widget to the main grid, spanning columns 0-2
-        grid_layout.addWidget(v_label1, 7, 3, 1, 3)
-        grid_layout.addWidget(composition_row_widget, 7, 0, 1, 3)
+        grid_layout.addWidget(v_label1, 8, 4, 1, 4)
+        grid_layout.addWidget(composition_row_widget, 8, 0, 1, 4)
+
+        # Category of accidents=End==============================================================
+
+        # Vehicle =Start================================================================
+        
+        # Composition of Various Vehicles
+        composition_row_widget = QWidget(self.general_widget)
+        composition_row_layout = QHBoxLayout(composition_row_widget)
+        composition_row_layout.setContentsMargins(0, 0, 0, 0)
+        composition_row_layout.setSpacing(20)  # Space between label and box
+        
+        # The white box (vehicle_widget) as before
+        vehicle_widget = QWidget(self.general_widget)
+        vehicle_widget.setStyleSheet("background-color: #FFFFFF; border-radius: 10px; border: 1px solid #DDDCE0;")
+        vehicle_layout = QGridLayout(vehicle_widget)
+        vehicle_layout.setContentsMargins(8, 8, 8, 8)
+
+        vehicle_type_label = QLabel("Type of Vehicle")
+        vehicle_type_label.setAlignment(Qt.AlignCenter)
+        vehicle_type_label.setStyleSheet("""
+            QLabel {
+                border: 0px;
+                padding: 3px 10px;
+            }
+        """)
+
+        composition_label = QLabel("Composition of Various Vehicles")
+        composition_label.setAlignment(Qt.AlignCenter)
+        composition_label.setStyleSheet("""
+            QLabel {
+                border: 0px;
+                padding: 3px 10px;
+            }
+        """)
+
+        per_dist_label = QLabel("% Accident Distribution")
+        per_dist_label.setAlignment(Qt.AlignCenter)
+        per_dist_label.setStyleSheet("""
+            QLabel {
+                border: 0px;
+                padding: 3px 10px;
+            }
+        """)
+
+        vehicle_layout.addWidget(vehicle_type_label, 0, 0)
+        vehicle_layout.addWidget(composition_label, 0, 1)
+        vehicle_layout.addWidget(per_dist_label, 0, 2)
+
+        vehicles = [
+            "Two Wheeler",
+            "Small Car",
+            "Big Car",
+            "Ordinary Bus",
+            "Deluxe Bus",
+            "LCV",
+            "MCV",
+            "HCV"
+        ]
+
+        for i, vehicle in enumerate(vehicles):
+            v_label = QLabel(f"{vehicle}:")
+            v_label.setFixedHeight(40)
+            v_label.setAlignment(Qt.AlignCenter)
+            v_label.setStyleSheet("background-color: #FFFFFF; border: 1px solid #FFFFFF; border-radius: 10px; padding: 10px 10px 10px 1px;")
+            v0_input = QLineEdit()
+            self.traffic_widgets.append(v0_input)
+            v0_input.setFixedWidth(self.text_box_width)
+            v0_input.setStyleSheet("""
+                QLineEdit {
+                    border: 1px solid #DDDCE0;
+                    border-radius: 10px;
+                    padding: 3px 10px;
+                    background: #FFFFFF;
+                }
+            """)
+            v1_input = QLineEdit()
+            self.traffic_widgets.append(v1_input)
+            v1_input.setFixedWidth(self.text_box_width)
+            v1_input.setStyleSheet("""
+                QLineEdit {
+                    border: 1px solid #DDDCE0;
+                    border-radius: 10px;
+                    padding: 3px 10px;
+                    background: #FFFFFF;
+                }
+            """)
+            vehicle_layout.addWidget(v_label, i+1, 0)
+            vehicle_layout.addWidget(v0_input, i+1, 1)
+            vehicle_layout.addWidget(v1_input, i+1, 2)
+        
+        v_label1 = QLabel("(Vehicles/Day)")
+        v_label1.setStyleSheet(" padding: 10px 10px 10px 1px;")
+
+        composition_row_layout.addWidget(vehicle_widget, alignment=Qt.AlignTop)
+
+        # Add the composition_row_widget to the main grid, spanning columns 0-2
+        grid_layout.addWidget(v_label1, 9, 4, 1, 4)
+        grid_layout.addWidget(composition_row_widget, 9, 0, 1, 4)
+
+        # Vehicle Data=End==============================================================
 
         self.general_layout.addLayout(grid_layout)
         self.general_layout.addStretch(1)
@@ -388,6 +547,12 @@ class BridgeAndTrafficData(QWidget):
         self.scroll_content_layout.addSpacerItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         left_panel_vlayout.addWidget(self.scroll_area)
+    
+    def custom_combo_input(self, index, combo):
+        if combo.itemText(index) == "Custom":
+            combo.setEditable(True)
+            combo.lineEdit().setText("")
+            combo.lineEdit().setPlaceholderText("Type here...")
     
     def collect_data(self):
         data = []

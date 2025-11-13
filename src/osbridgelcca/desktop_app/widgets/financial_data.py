@@ -226,13 +226,13 @@ class FinancialData(QWidget):
         grid_layout.addWidget(suggested3, 2, 3, alignment=Qt.AlignVCenter)
 
         # 4. Duration of Study
-        label4 = QLabel("Duration of Study")
+        label4 = QLabel("Design Life")
         label4.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input4 = QLineEdit()
         self.widgets.append(input4)
         input4.setAlignment(Qt.AlignmentFlag.AlignLeft)
         input4.setFixedWidth(field_width)
-        input4.setText("50 & 100")
+        input4.setText("50")
         input4.setStyleSheet(input1.styleSheet())
         unit4 = QLabel("(years)")
         suggested4 = QLabel("Suggested", parent=self.general_widget, styleSheet="color: #B3AEAE; font-size: 10px;")
@@ -255,6 +255,21 @@ class FinancialData(QWidget):
         grid_layout.addWidget(input5, 4, 1, alignment=Qt.AlignVCenter)
         grid_layout.addWidget(unit5, 4, 2, alignment=Qt.AlignVCenter)
         grid_layout.addWidget(QWidget(), 4, 3)  # Empty cell for suggested
+
+        # 6. Analysis Period
+        label5 = QLabel("Analysis Period")
+        label5.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        input5 = QLineEdit()
+        self.widgets.append(input5)
+        input5.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        input5.setFixedWidth(field_width)
+        input5.setText("50")
+        input5.setStyleSheet(input1.styleSheet())
+        unit5 = QLabel("(years)")
+        grid_layout.addWidget(label5, 5, 0, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(input5, 5, 1, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(unit5, 5, 2, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(QWidget(), 5, 3)  # Empty cell for suggested
 
         self.general_layout.addLayout(grid_layout)
         self.general_layout.addStretch(1)
@@ -296,13 +311,21 @@ class FinancialData(QWidget):
     def collect_data(self):
         data = []
         for widget in self.widgets:
-            print(f"Collecting data from widget: {widget}")
             if isinstance(widget, QComboBox):
                 value = widget.currentText()
             elif isinstance(widget, QLineEdit):
                 value = widget.text() if widget.text() != "" else "0"
-            data.append(value)
-        print("Collected Data from UI:",data)     
+            data.append(value)  
+        # percentage
+        data[0] = float(data[0])/100
+        data[1] = float(data[1])/100
+        self.database_manager.analysis_period = float(data[5])
+
+        # save discount_rate and design_life
+        self.database_manager.discount_rate = data[0]
+        self.database_manager.design_life = float(data[3])
+
+        print("Collected Data from UI:",data)
 
         # calculate time cost
         total_initial_construction_cost = self.parent.results.get(COST_TOTAL_INIT_CONST)

@@ -181,7 +181,7 @@ class MaintenanceRepairData(QWidget):
         self.widget.append(pmc_input)
         pmc_input.setAlignment(Qt.AlignmentFlag.AlignTop)
         pmc_input.setFixedWidth(field_width)
-        pmc_input.setText("0.555")
+        pmc_input.setText("0.55")
         pmc_input.setStyleSheet("""
             QLineEdit {
                 border: 1px solid #DDDCE0;
@@ -284,6 +284,26 @@ class MaintenanceRepairData(QWidget):
         grid_layout.addWidget(fri_unit, 4, 2, alignment=Qt.AlignVCenter)
         grid_layout.addWidget(fri_suggested, 4, 3, alignment=Qt.AlignVCenter)
 
+        # 6. Frequency of Major Repairs
+        label5 = QLabel("Frequency of Major Repairs")
+        label5.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        fri_input = QLineEdit()
+        self.widget.append(fri_input)
+        fri_input.setAlignment(Qt.AlignmentFlag.AlignTop)
+        fri_input.setFixedWidth(field_width)
+        fri_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #DDDCE0;
+                border-radius: 10px;
+                padding: 3px 10px;
+            }
+        """)
+        fri_unit = QLabel("(years)")
+        grid_layout.addWidget(label5, 5, 0, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(fri_input, 5, 1, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(fri_unit, 5, 2, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(QLabel(), 5, 3, alignment=Qt.AlignVCenter)
+
         self.general_layout.addLayout(grid_layout)
         self.general_layout.addStretch(1)
         self.scroll_content_layout.addWidget(self.general_widget, alignment=Qt.AlignLeft)
@@ -330,6 +350,10 @@ class MaintenanceRepairData(QWidget):
             elif isinstance(widget, QLineEdit):
                 value = widget.text() if widget.text() != "" else "0"
             data.append(value)
+        
+        data[0] = float(data[0])/100
+        data[1] = float(data[1])/100
+        data[2] = float(data[2])/100
 
         print("Collected Data from UI:",data)     
 
@@ -340,17 +364,17 @@ class MaintenanceRepairData(QWidget):
         self.parent.results[COST_PERIODIC_MAINTAINANCE] = cost
 
         # Routine Inspection Cost Calculation
-        cost = self.database_manager.routine_inspection_cost(total_initial_construction_cost)
+        cost = self.database_manager.routine_inspection_cost(data, total_initial_construction_cost)
         # Update Results Dict
         self.parent.results[COST_TOTAL_ROUTINE_INSPECTION] = cost
 
         # Repair and Rehabilitation Cost Calculation
-        cost = self.database_manager.repair_and_rehabilitation_cost(total_initial_construction_cost)
+        cost = self.database_manager.repair_and_rehabilitation_cost(total_initial_construction_cost, data)
         # Update Results Dict
         self.parent.results[COST_REPAIR_REHAB] = cost
 
         # Periodic Maintenance Carbon Emission Cost Calculation (Concrete only)
-        cost = self.database_manager.periodic_maintainnce_carbon_emission_cost(data)
+        cost = self.database_manager.periodic_maintainance_carbon_emission_cost(data)
         # Update Results Dict
         self.parent.results[COST_PERIODIC_MAINTAINANCE_CARBON_EMISSION] = cost
 

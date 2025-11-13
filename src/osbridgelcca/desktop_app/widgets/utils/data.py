@@ -25,7 +25,7 @@ KEY_LANES = "lanes"
 KEY_ROADROUGHNESS = "road_roughness"
 KEY_ROAD_RISE_AND_FALL = "road_rise_and_fall"
 KEY_TYPE_OF_ROAD = "type_of_road"
-KEY_ANNUAL_INCREASE = "annual_increase"
+KEY_ACCIDENT_CAT = "annual_increase"
 
 
 KEY_EMBODIED_CARBON_ENERGY = "embodied_carbon_energy"
@@ -47,17 +47,6 @@ COST_RECONSTRUCTION = "Reconstruction Cost"
 
 construction_materials = {
     KEY_FOUNDATION: {
-        "Pile": {
-            "Steel Rebar": {
-                KEY_GRADE: ["Fe415", "Fe500", "Fe550"],
-                KEY_UNITS: ["cum", "kg", "MT", "rmt", "sqm", "ltr"]
-            },
-            "Reinforced Cement Concrete": {
-                KEY_GRADE: ["M10", "M15", "M20", "M25", "M30", "M35", "M40", "M45", "M50", 
-                          "M55", "M60", "M65", "M70", "M75", "M80", "M85", "M90", "M95", "M100"],
-                KEY_UNITS: ["cum", "kg", "MT", "rmt", "sqm", "ltr"]
-            }
-        },
         "Excavation": {
             "Rock": {
                 KEY_GRADE: [],
@@ -108,6 +97,17 @@ construction_materials = {
                 KEY_UNITS: ["cum", "kg", "MT", "rmt", "sqm", "ltr"]
                 },
         },
+        "Pile": {
+            "Steel Rebar": {
+                KEY_GRADE: ["Fe415", "Fe500", "Fe550"],
+                KEY_UNITS: ["cum", "kg", "MT", "rmt", "sqm", "ltr"]
+            },
+            "Reinforced Cement Concrete": {
+                KEY_GRADE: ["M10", "M15", "M20", "M25", "M30", "M35", "M40", "M45", "M50", 
+                          "M55", "M60", "M65", "M70", "M75", "M80", "M85", "M90", "M95", "M100"],
+                KEY_UNITS: ["cum", "kg", "MT", "rmt", "sqm", "ltr"]
+            }
+        },
         "Pile Cap": {
             "Steel Rebar": {
                 KEY_GRADE: ["Fe415", "Fe500", "Fe550"],
@@ -118,7 +118,7 @@ construction_materials = {
                           "M55", "M60", "M65", "M70", "M75", "M80", "M85", "M90", "M95", "M100"],
                 KEY_UNITS: ["cum", "kg", "MT", "rmt", "sqm", "ltr"]
             }
-        }
+        }        
     },
     
     KEY_SUBSTRUCTURE: {
@@ -278,8 +278,14 @@ bridge_traffic_data = {
     KEY_BRIDGE_TRAFFIC: {
         KEY_LANES: {
             KEY_OPTIONS: [
-                "2",
-                "4"
+                "Single Lane Roads",
+                "Intermediate Lane Roads",
+                "Two Lane Roads",
+                "Four Lane Divided Roads",
+                "Six Lane Divided Roads",
+                "Four Lane Divided Expressways",
+                "Six Lane Divided Expressways",
+                "Eight Lane Divided Urban Expressways"
             ],
            
         },
@@ -297,14 +303,12 @@ bridge_traffic_data = {
         KEY_TYPE_OF_ROAD: {
             KEY_OPTIONS: [
                 "Urban Road",
-                "Rural Road",
-                "Highway",
-                "Expressway"
+                "Rural Road"
             ],
             
         },
-        KEY_ANNUAL_INCREASE: {
-            KEY_OPTIONS: ["8", "9", "10", "12"],
+        KEY_ACCIDENT_CAT: {
+            KEY_OPTIONS: ["Minor Injury", "Major Injury", "Fatal"],
        
        },
     }   
