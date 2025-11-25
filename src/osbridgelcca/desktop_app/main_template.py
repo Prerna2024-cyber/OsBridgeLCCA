@@ -36,20 +36,6 @@ class UiMainWindow(object):
         self.database_manager = DatabaseManager()
         # To check if tab widget is there or no
         self.tabs_active = False
-        self.results = {
-            COST_TOTAL_INIT_CONST: None,
-            COST_TOTAL_INIT_CARBON_EMISSION: None,
-            COST_TIME: None,
-            COST_TOTAL_ROAD_USER: None,
-            COST_ADDITIONAL_CARBON_EMISSION: None,
-            COST_PERIODIC_MAINTAINANCE: None,
-            COST_PERIODIC_MAINTAINANCE_CARBON_EMISSION: None,
-            COST_TOTAL_ROUTINE_INSPECTION: None,
-            COST_REPAIR_REHAB: None,
-            COST_DEMOLITION_DISPOSAL: None,
-            COST_RECYCLING: None,
-            COST_RECONSTRUCTION: None
-        }
         # Contains name of widget and its index in tabs
         self.active_tab_widgets = {}
         self.widget_map = {

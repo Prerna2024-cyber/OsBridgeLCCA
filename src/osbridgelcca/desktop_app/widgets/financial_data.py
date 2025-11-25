@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QIntValidator
 from .utils.data import *
 import sys
 import os
@@ -168,7 +168,7 @@ class FinancialData(QWidget):
         label1_layout = QHBoxLayout(label1_widget)
         label1_layout.setContentsMargins(0, 0, 0, 0)
         label1_layout.setSpacing(4)
-        label1 = QLabel("Real Discount Rate")
+        label1 = QLabel("Discount Rate (Inflation Adjusted)")
         label1.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         label1_layout.addWidget(label1)
         info_icon = QLabel()
@@ -179,7 +179,7 @@ class FinancialData(QWidget):
         self.widgets.append(input1)
         input1.setAlignment(Qt.AlignmentFlag.AlignLeft)
         input1.setFixedWidth(field_width)
-        input1.setText("4.2500")
+        input1.setText("6.70")
         input1.setStyleSheet("""
             QLineEdit {
                 border: 1px solid #DDDCE0;
@@ -194,14 +194,14 @@ class FinancialData(QWidget):
         grid_layout.addWidget(unit1, 0, 2, alignment=Qt.AlignVCenter)
         grid_layout.addWidget(suggested1, 0, 3, alignment=Qt.AlignVCenter)
 
-        # 2. Interest Rate
-        label2 = QLabel("Interest Rate")
+        # 2. Inflation Rate
+        label2 = QLabel("Inflation Rate")
         label2.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input2 = QLineEdit()
         self.widgets.append(input2)
         input2.setAlignment(Qt.AlignmentFlag.AlignLeft)
         input2.setFixedWidth(field_width)
-        input2.setText("10")
+        input2.setText("5.15")
         input2.setStyleSheet(input1.styleSheet())
         unit2 = QLabel("(%)")
         suggested2 = QLabel("Suggested", parent=self.general_widget, styleSheet="color: #B3AEAE; font-size: 10px;")
@@ -210,7 +210,23 @@ class FinancialData(QWidget):
         grid_layout.addWidget(unit2, 1, 2, alignment=Qt.AlignVCenter)
         grid_layout.addWidget(suggested2, 1, 3, alignment=Qt.AlignVCenter)
 
-        # 3. Investment Ratio
+        # 3. Interest Rate
+        label2 = QLabel("Interest Rate")
+        label2.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        input2 = QLineEdit()
+        self.widgets.append(input2)
+        input2.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        input2.setFixedWidth(field_width)
+        input2.setText("7.75")
+        input2.setStyleSheet(input1.styleSheet())
+        unit2 = QLabel("(%)")
+        suggested2 = QLabel("Suggested", parent=self.general_widget, styleSheet="color: #B3AEAE; font-size: 10px;")
+        grid_layout.addWidget(label2, 2, 0, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(input2, 2, 1, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(unit2, 2, 2, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(suggested2, 2, 3, alignment=Qt.AlignVCenter)
+
+        # 4. Investment Ratio
         label3 = QLabel("Investment Ratio")
         label3.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input3 = QLineEdit()
@@ -220,15 +236,16 @@ class FinancialData(QWidget):
         input3.setText("0.5000")
         input3.setStyleSheet(input1.styleSheet())
         suggested3 = QLabel("Suggested", parent=self.general_widget, styleSheet="color: #B3AEAE; font-size: 10px;")
-        grid_layout.addWidget(label3, 2, 0, alignment=Qt.AlignVCenter)
-        grid_layout.addWidget(input3, 2, 1, alignment=Qt.AlignVCenter)
-        grid_layout.addWidget(QWidget(), 2, 2)  # Empty cell for unit
-        grid_layout.addWidget(suggested3, 2, 3, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(label3, 3, 0, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(input3, 3, 1, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(QWidget(), 3, 2)  # Empty cell for unit
+        grid_layout.addWidget(suggested3, 3, 3, alignment=Qt.AlignVCenter)
 
-        # 4. Duration of Study
+        # 5. Design Life
         label4 = QLabel("Design Life")
         label4.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input4 = QLineEdit()
+        input4.setValidator(QIntValidator(input4))
         self.widgets.append(input4)
         input4.setAlignment(Qt.AlignmentFlag.AlignLeft)
         input4.setFixedWidth(field_width)
@@ -236,12 +253,12 @@ class FinancialData(QWidget):
         input4.setStyleSheet(input1.styleSheet())
         unit4 = QLabel("(years)")
         suggested4 = QLabel("Suggested", parent=self.general_widget, styleSheet="color: #B3AEAE; font-size: 10px;")
-        grid_layout.addWidget(label4, 3, 0, alignment=Qt.AlignVCenter)
-        grid_layout.addWidget(input4, 3, 1, alignment=Qt.AlignVCenter)
-        grid_layout.addWidget(unit4, 3, 2, alignment=Qt.AlignVCenter)
-        grid_layout.addWidget(suggested4, 3, 3, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(label4, 4, 0, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(input4, 4, 1, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(unit4, 4, 2, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(suggested4, 4, 3, alignment=Qt.AlignVCenter)
 
-        # 5. Time for construction of Base Project
+        # 6. Time for construction of Base Project
         label5 = QLabel("Time for construction of Base Project")
         label5.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input5 = QLineEdit()
@@ -251,25 +268,27 @@ class FinancialData(QWidget):
         input5.setText("")
         input5.setStyleSheet(input1.styleSheet())
         unit5 = QLabel("(years)")
-        grid_layout.addWidget(label5, 4, 0, alignment=Qt.AlignVCenter)
-        grid_layout.addWidget(input5, 4, 1, alignment=Qt.AlignVCenter)
-        grid_layout.addWidget(unit5, 4, 2, alignment=Qt.AlignVCenter)
-        grid_layout.addWidget(QWidget(), 4, 3)  # Empty cell for suggested
+        grid_layout.addWidget(label5, 5, 0, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(input5, 5, 1, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(unit5, 5, 2, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(QWidget(), 5, 3)  # Empty cell for suggested
 
-        # 6. Analysis Period
+        # 7. Analysis Period
         label5 = QLabel("Analysis Period")
         label5.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input5 = QLineEdit()
+        input5.setValidator(QIntValidator(input5))
         self.widgets.append(input5)
         input5.setAlignment(Qt.AlignmentFlag.AlignLeft)
         input5.setFixedWidth(field_width)
         input5.setText("50")
         input5.setStyleSheet(input1.styleSheet())
         unit5 = QLabel("(years)")
-        grid_layout.addWidget(label5, 5, 0, alignment=Qt.AlignVCenter)
-        grid_layout.addWidget(input5, 5, 1, alignment=Qt.AlignVCenter)
-        grid_layout.addWidget(unit5, 5, 2, alignment=Qt.AlignVCenter)
-        grid_layout.addWidget(QWidget(), 5, 3)  # Empty cell for suggested
+        suggested = QLabel("Suggested", parent=self.general_widget, styleSheet="color: #B3AEAE; font-size: 10px;")
+        grid_layout.addWidget(label5, 6, 0, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(input5, 6, 1, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(unit5, 6, 2, alignment=Qt.AlignVCenter)
+        grid_layout.addWidget(suggested, 6, 3)  # Empty cell for suggested
 
         self.general_layout.addLayout(grid_layout)
         self.general_layout.addStretch(1)
@@ -309,29 +328,25 @@ class FinancialData(QWidget):
         self.setParent(None)
 
     def collect_data(self):
-        data = []
-        for widget in self.widgets:
-            if isinstance(widget, QComboBox):
-                value = widget.currentText()
-            elif isinstance(widget, QLineEdit):
-                value = widget.text() if widget.text() != "" else "0"
-            data.append(value)  
-        # percentage
-        data[0] = float(data[0])/100
-        data[1] = float(data[1])/100
-        self.database_manager.analysis_period = float(data[5])
+        from pprint import pprint
+        data = {
+            KEY_DISCOUNT_RATE_IA: 0.0 if not self.widgets[0].text() else float(self.widgets[0].text())/100,
+            KEY_INFLATION_RATE: 0.0 if not self.widgets[1].text() else float(self.widgets[1].text())/100,
+            KEY_INTEREST_RATE: 0.0 if not self.widgets[2].text() else float(self.widgets[2].text())/100,
+            KEY_INVESTMENT_RATIO: 0.0 if not self.widgets[3].text() else float(self.widgets[3].text()),
+            KEY_DESIGN_LIFE: 0 if not self.widgets[4].text() else int(self.widgets[4].text()),
+            KEY_CONSTR_TIME: 0.0 if not self.widgets[5].text() else float(self.widgets[5].text()),
+            KEY_ANALYSIS_PERIOD: 0 if not self.widgets[6].text() else int(self.widgets[6].text()),
+        }
 
-        # save discount_rate and design_life
-        self.database_manager.discount_rate = data[0]
-        self.database_manager.design_life = float(data[3])
+        print("\nCollected Data from Financial UI:")
+        pprint(data)
 
-        print("Collected Data from UI:",data)
+        # Save UI Data to Backend
+        self.database_manager.financial_data = data
 
-        # calculate time cost
-        total_initial_construction_cost = self.parent.results.get(COST_TOTAL_INIT_CONST)
-        time_cost = self.database_manager.calculate_time_cost(data, total_initial_construction_cost)
-        # Update Results Dict
-        self.parent.results[COST_TIME] = time_cost
+        # calculate Time Cost
+        self.database_manager.calculate_time_cost()
 
 #----------------Standalone-Test-Code--------------------------------
 

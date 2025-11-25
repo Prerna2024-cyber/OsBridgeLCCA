@@ -1,11 +1,13 @@
 import sqlite3
 from typing import List, Dict, Tuple
 from .data import *
-from .cost_component import ( InitialConstructionCost, TimeCost, RoadUserCost,
-                                    AdditionalCarbonEmissionCost, PeriodicMaintenanceCost,
-                                    RoutineInspectionCost, RepairAndRehabilitationCost, 
-                                    DemolitionCost, RecyclingCost, ReconstructionCost,
-                                    PeriodicMaintenanceCarbonCost
+from .cost_component import ( BearingAndExpansionJointReplacementCost, CarbonEmissionDueToRerouting, DemolitionCarbonCost, DemolitionCarbonReroutingCost,
+                                InitialConstructionCost, MajorInspectionCost, MajorRepairCost,
+                                MajorRepairRelCarbonEmissionCost, TimeCost, RoadUserCost,
+                                AdditionalCarbonEmissionCost, PeriodicMaintenanceCost,
+                                RoutineInspectionCost, RepairAndRehabilitationCost, 
+                                DemolitionCost, RecyclingCost, ReconstructionCost,
+                                PeriodicMaintenanceCarbonCost
 )
 
 class DatabaseManager:
@@ -22,9 +24,49 @@ class DatabaseManager:
         self.db_path = db_path
         self.conn = None
         self.create_database(recreate=recreate)
-        self.discount_rate = 0
-        self.design_life = 0
-        self.analysis_period = 0
+
+        # Data from UI
+        self.financial_data = {}
+        self.carbon_emission_cost_data = {}
+        self.daily_average_traffic_data = {}
+        self.maintainance_and_repair_data = {}
+        self.demolition_and_recycling_data = {}
+        self.traffic_data = {}
+
+        # Total Costs
+        self.results = {
+            COST_TOTAL_INIT_CONST: 7724184.66,
+            COST_TOTAL_SUPERSTRUCTURE: None,
+            COST_TOTAL_INIT_CARBON_EMISSION: 1217668.46,
+            COST_TIME: None,
+            COST_CARBON_EMISSION_REROUTING_INIT: None,
+            COST_TOTAL_ROUTINE_INSPECTION: None,
+            COST_PERIODIC_MAINTAINANCE: None,
+            COST_MAJOR_INSPECTION: None,
+            COST_MAJOR_REPAIR: None,
+            COST_PERIODIC_MAINTAINANCE_CARBON_EMISSION: None,
+            COST_MAJOR_REPAIR_RELATED_CARBON_EMISSION: None,
+            COST_CARBON_EMISSION_RR_DURING_MAJOR_REPAIR: None,
+            COST_DEMOLITION_DISPOSAL: None,
+            COST_DEMOLITION_DISPOSAL_CARBON: None,
+            COST_DEMOLITION_DISPOSAL_CARBON_REROUTING: None,
+            COST_RECYCLING: None,
+
+            COST_TOTAL_ROAD_USER: None,
+            COST_ADDITIONAL_CARBON_EMISSION: None,
+            COST_REPAIR_REHAB: None,
+            COST_RECONSTRUCTION: None
+        }
+
+        # Some Constants
+        self.CO2_EMISSION_PER_KM = 0.1213
+        self.WORKING_DAYS_IN_MONTH = 26
+        # Duration of Major Repairs (Month)
+        self.DURATION_MAJOR_REPAIRS = 3
+        # Duration of Replacement (Month)
+        self.DURATION_REPLACEMENT = 2/self.WORKING_DAYS_IN_MONTH
+        # Duration of Demolition and Disposal (Month)
+        self.DURATION_DEMOLITION_DISPOSAL = 2
     
     def create_database(self, recreate: bool = True):
         """
@@ -251,68 +293,10 @@ class DatabaseManager:
         cursor = self.conn.cursor()
         cursor.execute('DELETE FROM component WHERE comp_id = ?', (component_id,))
         self.conn.commit()
-    
-    def get_all_structure_works(self) -> List[Tuple]:
-        """Get summary of all structure works"""
-        cursor = self.conn.cursor()
-        cursor.execute('''
-            SELECT sw.comp_id, sw.type, sw.component_type, COUNT(c.id) as component_count
-            FROM struct_works_data sw
-            LEFT JOIN component c ON sw.comp_id = c.comp_id
-            GROUP BY sw.comp_id
-            ORDER BY sw.type, sw.comp_id
-        ''')
-        return cursor.fetchall()
-    
-    def get_components_by_comp_id(self, comp_id: int) -> List[Tuple]:
-        """Get all component rows for a specific comp_id"""
-        cursor = self.conn.cursor()
-        cursor.execute('''
-            SELECT id, comp_id, type_material, grade, quantity, unit, rate, rate_data_source
-            FROM component
-            WHERE comp_id = ?
-            ORDER BY id
-        ''', (comp_id,))
-        return cursor.fetchall()
-
-    def _insert_financial_data(self, data: List[float]) -> int:
-        """
-        Insert a new row into the financial_data table
-        
-        Args:
-            data: List containing [real_discount_rate, interest_rate, investment_ratio, duration_of_study]
-                 in the same sequence as the table columns
-        
-        Returns:
-            id: The ID of the newly created financial data row
-        
-        Raises:
-            ValueError: If the data list doesn't contain exactly 4 elements
-        """
-        if len(data) != 5:
-            raise ValueError("Data list must contain exactly 4 elements: [real_discount_rate, interest_rate, investment_ratio, duration_of_study]")
-        
-        cursor = self.conn.cursor()
-        
-        
-        cursor.execute('''
-            INSERT INTO financial_data (
-                real_discount_rate,
-                interest_rate,
-                investment_ratio,
-                duration_of_study,
-                time_of_project
-            )
-            VALUES (?, ?, ?, ?,?)
-        ''', data)
-        
-        financial_data_id = cursor.lastrowid
-        self.conn.commit()
-        return financial_data_id
 
     def get_all_materials_info(self) -> List[Dict]:
         """
-        Retrieve all unique material types, grades, and quantities from the component table
+        Retrieve all material types, grades, and quantities from the component table
         
         Returns:
             List of dictionaries containing material information with keys:
@@ -323,7 +307,7 @@ class DatabaseManager:
         """
         cursor = self.conn.cursor()
         cursor.execute('''
-            SELECT DISTINCT type_material, grade, quantity, unit, rate
+            SELECT type_material, grade, quantity, unit, rate
             FROM component
             ORDER BY type_material, grade
         ''')
@@ -331,16 +315,51 @@ class DatabaseManager:
         results = []
         for row in cursor.fetchall():
             material_info = {
-                'type_material': row[0],
-                'grade': row[1],
-                'quantity': row[2],
-                'unit': row[3],
-                'rate': row[4]
+                KEY_TYPE: row[0],
+                KEY_GRADE: row[1],
+                KEY_QUANTITY: row[2],
+                KEY_UNIT_M3: row[3],
+                KEY_RATE: row[4]
             }
             results.append(material_info)
         
         return results
     
+    def get_all_superstructures_data(self) -> List[Dict]:
+        """
+        Retrieve all material types, grades, and quantities from the component table
+        only for superstructure
+        
+        Returns:
+            List of dictionaries containing material information with keys:
+            - type_material: The type of material
+            - grade: The grade of the material
+            - quantity: The quantity used
+            - unit: The unit of measurement
+        """
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT comp_id, type_material, grade, quantity, unit, rate
+            FROM component
+            WHERE comp_id IN
+            (SELECT comp_id
+             FROM struct_works_data
+             WHERE type = ?);
+        ''', (KEY_SUPERSTRUCTURE,))
+        
+        results = []
+        for row in cursor.fetchall():
+            material_info = {
+                KEY_TYPE: row[1],
+                KEY_GRADE: row[2],
+                KEY_QUANTITY: row[3],
+                KEY_UNIT_M3: row[4],
+                KEY_RATE: row[5]
+            }
+            results.append(material_info)
+        
+        return results
+
     def get_unique_materials_and_grades(self) -> List[List[str]]:
         """
         Retrieve all unique material and grade pairs from the component table
@@ -359,7 +378,10 @@ class DatabaseManager:
         output =[[row[0], row[1], row[2], row[3]] for row in cursor.fetchall()]
         p = []
         for item in output:
-            s = item[0] + " (" + item[1] + ")"
+            if item[1]:
+                s = item[0] + " (" + item[1] + ")"
+            else:
+                s = item[0]
             p.append([s, item[2], item[3], item[0], item[1]])
         return p
 
@@ -391,7 +413,6 @@ class DatabaseManager:
                     data.get(KEY_UNIT_M3, ''),
                     float(data.get(KEY_CARBON_EMISSION_FACTOR, 0)),
                     float(data.get(KEY_EMBODIED_CARBON_ENERGY, 0))
-                    
                 )
                 records.append(record)
             # Execute batch insert
@@ -435,118 +456,420 @@ class DatabaseManager:
 
     #========================Calculations========================
 
-    #(OK) 1. Called on next from Auxiliary Cost Data.py 
+    #=================Initial-Stage-Cost-Start===================
+    # 1. Initial Cost Calculation 
     def calculate_total_initial_cost(self) -> float:
+        obj = InitialConstructionCost()
         data = self.get_all_materials_info()
         total_cost = 0.0
         for item in data:
-            component = InitialConstructionCost(
-            quantity=item["quantity"],
-            rate=item["rate"]
+            cost = obj.calculate_cost(
+                quantity=item.get(KEY_QUANTITY),
+                rate=item.get(KEY_RATE)
             )
-            total_cost += component.calculate_cost()
-        print("\nTotal Initial Construction Cost:", total_cost)
-        return total_cost
-    
-    #(OK) 3. Called on next from financial_data.py
-    def calculate_time_cost(self, data: List, total_init_construct_cost: float) -> float:
-        # Insert financial data into the database
-        self._insert_financial_data(data) 
-        time_cost_component = TimeCost(
-            construction_cost=total_init_construct_cost,
-            interest_rate=float(data[1]),
-            time=float(data[4]),
-            investment_ratio=float(data[2])
-        )
-        print("\nTime Cost:", time_cost_component.calculate_cost())
-        return time_cost_component.calculate_cost()
+            print(f"\nMaterial={item.get(KEY_TYPE)}\nQuantity={item.get(KEY_QUANTITY)}\nRate={item.get(KEY_RATE)}\nCost={cost}")
+            total_cost += cost
 
-    #(OK) 2. Called on next from carbon_emission_cost_data.py
-    def carbon_emission_cost(self, carbon_cost: float) -> float:
-        # Updated Carbon cost
-        self.carbon_cost = carbon_cost
+        print("\n1.Total Initial Construction Cost:", total_cost)
+
+        # Store Total Initial cost
+        self.results[COST_TOTAL_INIT_CONST] = total_cost
+        return total_cost
+
+    # 2. Initial Carbon Emission Cost
+    def carbon_emission_cost(self) -> float:
 
         # Get carbon emission data from the database
         data = self.get_carbon_emission_data()
+
+        # SCC
+        if self.carbon_emission_cost_data.get(KEY_SOURCE) == SCC_K_Ricke_et_al:
+            SCC = self.carbon_emission_cost_data.get(KEY_SCC) * self.carbon_emission_cost_data.get(KEY_USD_T_INR)
+        else:
+            SCC = self.carbon_emission_cost_data.get(KEY_SCC)
+        
+        print(f"\nSCC considered is.\nSource={self.carbon_emission_cost_data.get(KEY_SOURCE)}\nSCC={SCC}")
 
         total_carbon_emission_cost= 0.0
         for item in data:
             qty = float(item.get(KEY_QUANTITY))
             emission_factor = float(item.get(KEY_CARBON_EMISSION_FACTOR))
-            carbon_emission_cost = (qty * emission_factor) * carbon_cost;
+            carbon_emission_cost = (qty * emission_factor) * SCC
             total_carbon_emission_cost += carbon_emission_cost
             print(f"Carbon Emission Cost for {item.get(KEY_TYPE)}:", carbon_emission_cost)
         
-        print("\nTotal Carbon Emission Cost:", total_carbon_emission_cost)
+        print("\n2.Total Carbon Emission Cost:", total_carbon_emission_cost)
+        self.results[COST_TOTAL_INIT_CARBON_EMISSION] = total_carbon_emission_cost
         return total_carbon_emission_cost
+    
+    # 3. Time Cost
+    def calculate_time_cost(self) -> float:
 
-    IRC_ROAD_COSTS_DATA = {
-        # Format: (Vehicle_Type, Lane_Type, Roughness, RF): Grand_Cost
-        ("Car", "2", "Good", "Rolling"): 15.50,
-        ("Car", "2", "Good", "Hilly"): 18.20,
-        ("Car", "2", "Fair", "Rolling"): 17.80,
-        ("Car", "2", "Fair", "Hilly"): 20.90,
-        ("Car", "2", "Poor", "Rolling"): 22.40,
-        ("Car", "2", "Poor", "Hilly"): 26.10,
-        ("Car", "4", "Good", "Rolling"): 14.20,
-        ("Car", "4", "Good", "Hilly"): 16.80,
-        ("Car", "4", "Fair", "Rolling"): 16.50,
-        ("Car", "4", "Fair", "Hilly"): 19.40,
-        ("Car", "4", "Poor", "Rolling"): 21.10,
-        ("Car", "4", "Poor", "Hilly"): 24.70,
+        component = TimeCost()
+        cost = component.calculate_cost(
+            construction_cost=self.results.get(COST_TOTAL_INIT_CONST),
+            interest_rate=self.financial_data.get(KEY_INTEREST_RATE),
+            time=self.financial_data.get(KEY_CONSTR_TIME),
+            investment_ratio=self.financial_data.get(KEY_INVESTMENT_RATIO)
+        )
+        print("\n3.Time Cost: ", cost)
+        # Save the time cost
+        self.results[COST_TIME] = cost
+        return cost
+
+    # Helper function to get total traffic
+    def _get_total_traffic(self)->float:
+        total_traffic = 0
+        for count in self.daily_average_traffic_data.values():
+            total_traffic += count
+        return total_traffic
+
+    # 5. Carbon Emission due to Rerouting during Initial Construction
+    def init_carbon_emission_rerouting(self) -> float:
+
+        total_traffic = self._get_total_traffic()
+        rerouting_dist = self.traffic_data.get(KEY_ADDIT_REROUTING_DISTANCE)
         
-        ("Bus", "2", "Good", "Rolling"): 45.80,
-        ("Bus", "2", "Good", "Hilly"): 52.30,
-        ("Bus", "2", "Fair", "Rolling"): 48.90,
-        ("Bus", "2", "Fair", "Hilly"): 55.80,
-        ("Bus", "2", "Poor", "Rolling"): 56.20,
-        ("Bus", "2", "Poor", "Hilly"): 64.10,
-        ("Bus", "4", "Good", "Rolling"): 42.50,
-        ("Bus", "4", "Good", "Hilly"): 48.70,
-        ("Bus", "4", "Fair", "Rolling"): 45.60,
-        ("Bus", "4", "Fair", "Hilly"): 52.10,
-        ("Bus", "4", "Poor", "Rolling"): 53.80,
-        ("Bus", "4", "Poor", "Hilly"): 61.40,
+        init_const_time = self.financial_data.get(KEY_CONSTR_TIME)
+        SCC = self.carbon_emission_cost_data.get(KEY_SCC)
+        cost = total_traffic * init_const_time * 12 * self.WORKING_DAYS_IN_MONTH * SCC * self.CO2_EMISSION_PER_KM * rerouting_dist
+
+        self.results[COST_CARBON_EMISSION_REROUTING_INIT] = cost
+        print(f"\n5.Carbon Emission due to Rerouting during Initial Construction. {cost}")
+        return cost
+    
+    #=================Initial-Stage-Cost-End===================
+
+    #=================Use-Stage-Cost-Start=====================
+    # 1. Routine Inspection Cost Calculation
+    def routine_inspection_cost(self) -> float:
+
+        component = RoutineInspectionCost()
+
+        cost = component.calculate_cost(
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            init_construction_cost=self.results.get(COST_TOTAL_INIT_CONST),
+            cost=self.maintainance_and_repair_data.get(KEY_ROUTINE_INSP_COST),
+            frequency=self.maintainance_and_repair_data.get(KEY_ROUTINE_INSP_FREQ),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA),
+            design_life=self.financial_data.get(KEY_DESIGN_LIFE)
+        )
+
+        self.results[COST_TOTAL_ROUTINE_INSPECTION] = cost
+        print("\n1.Routine Inspection Cost: ", cost)
+        return cost
+
+
+    # 2. Periodic Maintainance Cost
+    def periodic_maintainance_cost(self) -> float:
+
+        component = PeriodicMaintenanceCost()
+
+        cost = component.calculate_cost(
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            init_construction_cost=self.results.get(COST_TOTAL_INIT_CONST),
+            cost=self.maintainance_and_repair_data.get(KEY_PERIODIC_MAINT_COST),
+            frequency=self.maintainance_and_repair_data.get(KEY_PERIODIC_MAINT_FREQ),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA),
+            design_life=self.financial_data.get(KEY_DESIGN_LIFE)
+        )
+
+        self.results[COST_PERIODIC_MAINTAINANCE] = cost
+        print("\n2.Periodic Maintenance Cost: ", cost)
+        return cost
+    
+    # 3. Periodic Maintenance Carbon Emission Cost Calculation
+    def periodic_maintainance_carbon_emission_cost(self):
+
+        component = PeriodicMaintenanceCarbonCost()
+
+        cost = component.calculate_cost(
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            total_carbon_emission_cost=self.results.get(COST_TOTAL_INIT_CARBON_EMISSION),
+            cost=self.maintainance_and_repair_data.get(KEY_PERIODIC_MAINT_COST),
+            frequency=self.maintainance_and_repair_data.get(KEY_PERIODIC_MAINT_FREQ),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA),
+            design_life=self.financial_data.get(KEY_DESIGN_LIFE)
+        )
+
+        self.results[COST_PERIODIC_MAINTAINANCE_CARBON_EMISSION] = cost
+        print("\n3.Periodic Maintenance Carbon Emission Cost:", cost)
+        return cost
+    
+    # 4. Major Inspection Cost
+    def major_inspection_cost(self) -> float:
+
+        component = MajorInspectionCost()
+
+        cost = component.calculate_cost(
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            init_construction_cost=self.results.get(COST_TOTAL_INIT_CONST),
+            cost=self.maintainance_and_repair_data.get(KEY_MAJOR_INSP_COST),
+            frequency=self.maintainance_and_repair_data.get(KEY_MAJOR_INSP_FREQ),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA),
+            design_life=self.financial_data.get(KEY_DESIGN_LIFE)
+        )
+
+        self.results[COST_MAJOR_INSPECTION] = cost
+        print("\n4.Major Inspection Cost: ", cost)
+        return cost
+    
+    # 5. Major Repair Cost
+    def major_repair_cost(self) -> float:
+
+        component = MajorRepairCost()
+
+        cost = component.calculate_cost(
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            init_construction_cost=self.results.get(COST_TOTAL_INIT_CONST),
+            cost=self.maintainance_and_repair_data.get(KEY_MAJOR_REPAIR_COST),
+            frequency=self.maintainance_and_repair_data.get(KEY_MAJOR_REPAIR_FREQ),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA),
+            design_life=self.financial_data.get(KEY_DESIGN_LIFE)
+        )
+
+        self.results[COST_MAJOR_REPAIR] = cost
+        print("\n5.Major Repair Cost: ", cost)
+        return cost
+    
+    # 6. Major Repair Related Carbon Emisson Cost
+    def major_repair_related_carbon_emission_cost(self):
+
+        component = MajorRepairRelCarbonEmissionCost()
+
+        cost = component.calculate_cost(
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            total_carbon_emission_cost=self.results.get(COST_TOTAL_INIT_CARBON_EMISSION),
+            cost=self.maintainance_and_repair_data.get(KEY_MAJOR_REPAIR_COST),
+            frequency=self.maintainance_and_repair_data.get(KEY_MAJOR_REPAIR_FREQ),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA),
+            design_life=self.financial_data.get(KEY_DESIGN_LIFE)
+        )
+
+        self.results[COST_MAJOR_REPAIR_RELATED_CARBON_EMISSION] = cost
+        print("\n6.Major Repair Related Carbon Emisson Cost: ", cost)
+        return cost
+    
+    # 8. Carbon Emission due to rerouting during Major Repairs
+    def carbon_emission_rerouting_during_major_repairs(self):
+
+        component = CarbonEmissionDueToRerouting()
+
+        total_traffic = self._get_total_traffic()
+        SCC = self.carbon_emission_cost_data.get(KEY_SCC)
+        rerouting_dist = self.traffic_data.get(KEY_ADDIT_REROUTING_DISTANCE)
+
+        cost = component.calculate_cost(
+            additional_rerouting_dist=rerouting_dist,
+            duration_major_repair=self.DURATION_MAJOR_REPAIRS,
+            working_days_month=self.WORKING_DAYS_IN_MONTH,
+            total_traffic=total_traffic,
+            scc=SCC,
+            co2_emission_per_km=self.CO2_EMISSION_PER_KM,
+            repair_freq=self.maintainance_and_repair_data.get(KEY_MAJOR_REPAIR_FREQ),
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA),
+            design_life=self.financial_data.get(KEY_DESIGN_LIFE)
+        )
+
+        self.results[COST_CARBON_EMISSION_RR_DURING_MAJOR_REPAIR] = cost
+        print("\n8.Carbon Emission due to rerouting during Major Repairs: ", cost)
+        return cost
+    
+    # Helper function for 9
+    def _calculate_superstructure_cost(self) -> float:
+        obj = InitialConstructionCost()
+        data = self.get_all_superstructures_data()
+        print("\nCalculating Total of SuperStructures")
+        total_cost = 0.0
+        print(data)
+        for item in data:
+            print(item.get(KEY_QUANTITY),item.get(KEY_RATE))
+            cost = obj.calculate_cost(
+                quantity=item.get(KEY_QUANTITY),
+                rate=item.get(KEY_RATE)
+            )
+            print(f"\nMaterial={item.get(KEY_TYPE)}\nQuantity={item.get(KEY_QUANTITY)}\nRate={item.get(KEY_RATE)}\nCost={cost}")
+            total_cost += cost
+
+        print("\nTotal SuperStructures Cost:", total_cost)
+
+        # Store Total SuperStructures cost
+        self.results[COST_TOTAL_SUPERSTRUCTURE] = total_cost
+        return total_cost
+    
+    # 9. Replacement cost of Bearing and Expansion Joints
+    def bearing_expansion_joint_replacement_cost(self) -> float:
+
+        component = BearingAndExpansionJointReplacementCost()
+        total_superstructure_cost = self._calculate_superstructure_cost()
+
+        cost = component.calculate_cost(
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            total_superstructure_cost=total_superstructure_cost,
+            cost=self.maintainance_and_repair_data.get(KEY_MAJOR_INSP_COST),
+            frequency=self.maintainance_and_repair_data.get(KEY_MAJOR_REPAIR_FREQ),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA),
+            design_life=self.financial_data.get(KEY_DESIGN_LIFE)
+        )
+
+        self.results[COST_MAJOR_INSPECTION] = cost
+        print("\n9.Replacement cost of Bearing and Expansion Joints: ", cost)
+        return cost
+
+    # 11. Carbon Emission due to rerouting during Replacement
+    def carbon_emission_rerouting_during_replacement(self):
+
+        component = CarbonEmissionDueToRerouting()
+
+        total_traffic = self._get_total_traffic()
+        SCC = self.carbon_emission_cost_data.get(KEY_SCC)
+        rerouting_dist = self.traffic_data.get(KEY_ADDIT_REROUTING_DISTANCE)
+
+        cost = component.calculate_cost(
+            additional_rerouting_dist=rerouting_dist,
+            duration_major_repair=self.DURATION_REPLACEMENT,
+            working_days_month=self.WORKING_DAYS_IN_MONTH,
+            total_traffic=total_traffic,
+            scc=SCC,
+            co2_emission_per_km=self.CO2_EMISSION_PER_KM,
+            repair_freq=self.maintainance_and_repair_data.get(KEY_BEARING_EXP_JOINT_REPAIR_FREQ),
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA),
+            design_life=self.financial_data.get(KEY_DESIGN_LIFE)
+        )
+
+        self.results[COST_CARBON_EMISSION_RR_DURING_REPLACEMENT] = cost
+        print("\n11.Carbon Emission due to rerouting during Replacement: ", cost)
+        return cost
+    #=================Use-Stage-Cost-End=====================
+    
+    #==========End-Of-Life-Stage-Cost-Start==================
+    # Helper function to get sum(quantity*rate) for given Type(Material)
+    def _get_total_cost_material(self, type:str)->float:
+        obj = InitialConstructionCost()
+        data = self.get_all_materials_info()
+        total_cost = 0.0
+        for item in data:
+            if item.get(KEY_TYPE) == type:
+                cost = obj.calculate_cost(
+                    quantity=item.get(KEY_QUANTITY),
+                    rate=item.get(KEY_RATE)
+                )
+                total_cost += cost
         
-        ("HCV", "2", "Good", "Rolling"): 78.90,
-        ("HCV", "2", "Good", "Hilly"): 89.20,
-        ("HCV", "2", "Fair", "Rolling"): 84.50,
-        ("HCV", "2", "Fair", "Hilly"): 95.60,
-        ("HCV", "2", "Poor", "Rolling"): 96.80,
-        ("HCV", "2", "Poor", "Hilly"): 109.50,
-        ("HCV", "4", "Good", "Rolling"): 75.40,
-        ("HCV", "4", "Good", "Hilly"): 85.30,
-        ("HCV", "4", "Fair", "Rolling"): 81.20,
-        ("HCV", "4", "Fair", "Hilly"): 91.80,
-        ("HCV", "4", "Poor", "Rolling"): 93.70,
-        ("HCV", "4", "Poor", "Hilly"): 106.00,
+        print(f"\nMaterial={type}\nTotal Cost={total_cost}")
+        return total_cost
+    
+    # 1. Demolition and Disposal Cost
+    def demolition_and_disposal_cost(self) -> float:
         
-        ("MCV", "2", "Good", "Rolling"): 56.70,
-        ("MCV", "2", "Good", "Hilly"): 64.80,
-        ("MCV", "2", "Fair", "Rolling"): 61.20,
-        ("MCV", "2", "Fair", "Hilly"): 69.90,
-        ("MCV", "2", "Poor", "Rolling"): 70.50,
-        ("MCV", "2", "Poor", "Hilly"): 80.40,
-        ("MCV", "4", "Good", "Rolling"): 54.30,
-        ("MCV", "4", "Good", "Hilly"): 62.10,
-        ("MCV", "4", "Fair", "Rolling"): 58.80,
-        ("MCV", "4", "Fair", "Hilly"): 67.20,
-        ("MCV", "4", "Poor", "Rolling"): 68.20,
-        ("MCV", "4", "Poor", "Hilly"): 77.90,
+        component = DemolitionCost()
         
-        ("LCV", "2", "Good", "Rolling"): 38.40,
-        ("LCV", "2", "Good", "Hilly"): 44.10,
-        ("LCV", "2", "Fair", "Rolling"): 41.60,
-        ("LCV", "2", "Fair", "Hilly"): 47.70,
-        ("LCV", "2", "Poor", "Rolling"): 48.30,
-        ("LCV", "2", "Poor", "Hilly"): 55.40,
-        ("LCV", "4", "Good", "Rolling"): 36.80,
-        ("LCV", "4", "Good", "Hilly"): 42.30,
-        ("LCV", "4", "Fair", "Rolling"): 40.10,
-        ("LCV", "4", "Fair", "Hilly"): 46.00,
-        ("LCV", "4", "Poor", "Rolling"): 46.90,
-        ("LCV", "4", "Poor", "Hilly"): 53.80,
-    }
+        cost = component.calculate_cost(
+            init_constr_cost=self.results.get(COST_TOTAL_INIT_CONST),
+            demolition_disposal_cost=self.demolition_and_recycling_data.get(KEY_DEMOLITION_DISPOSAL_COST),
+            analysis_period=self.financial_data.get(KEY_ANALYSIS_PERIOD),
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA)
+        )
+        self.results[COST_DEMOLITION_DISPOSAL] = cost
+        print("\n1.Demolition and Disposal Cost:", cost)
+        return cost
+    
+    # 2. Demolition and Disposal related Carbon Emission
+    def demolition_disposal_carbon_emission_cost(self) -> float:
+        
+        component = DemolitionCarbonCost()
+        
+        cost = component.calculate_cost(
+            init_carbon_emission_cost=self.results.get(COST_TOTAL_INIT_CARBON_EMISSION),
+            demolition_disposal_cost=self.demolition_and_recycling_data.get(KEY_DEMOLITION_DISPOSAL_COST),
+            analysis_period=self.financial_data.get(KEY_ANALYSIS_PERIOD),
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA)
+        )
+        self.results[COST_DEMOLITION_DISPOSAL_CARBON] = cost
+        print("\n2.Demolition and Disposal related Carbon Emission:", cost)
+        return cost
+    
+    # 4. Carbon Emission due to Rerouting during Demolition and Disposal
+    def demolition_disposal_rerouting_carbon_emission_cost(self) -> float:
+        
+        component = DemolitionCarbonReroutingCost()
+        SCC = self.carbon_emission_cost_data.get(KEY_SCC)
+        addit_rerouting = self.traffic_data.get(KEY_ADDIT_REROUTING_DISTANCE)
+
+        cost = component.calculate_cost(
+            additional_rerouting_dist=addit_rerouting,
+            init_constr_cost=self.results.get(COST_TOTAL_INIT_CONST),
+            demolition_disposal_time=self.DURATION_DEMOLITION_DISPOSAL,
+            working_days_month=self.WORKING_DAYS_IN_MONTH,
+            scc=SCC,
+            co2_emission_per_km=self.CO2_EMISSION_PER_KM,
+            design_life=self.financial_data.get(KEY_DESIGN_LIFE),
+            analysis_period=self.financial_data.get(KEY_ANALYSIS_PERIOD),
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA)
+        )
+        self.results[COST_DEMOLITION_DISPOSAL_CARBON_REROUTING] = cost
+        print("\n4.Carbon Emission due to Rerouting during Demolition and Disposal:", cost)
+        return cost
+    
+    # 5. Recycling Cost
+    def recycling_cost(self) -> float:
+        total_recycling_cost = 0.0
+
+        steel_rebar_cost = self._get_total_cost_material(type="Steel Rebar")
+        struct_steel_cost = self._get_total_cost_material(type="Structural Steel")
+        pre_stressed_tendons_cost = self._get_total_cost_material(type="Tendons")
+        
+        component = RecyclingCost()
+
+        #-------Steel-Rebar-Cost-----------------------------------
+        steel_rebar_recycle_cost = component.calculate_cost(
+            total_material_cost=steel_rebar_cost,
+            material_scrap_rate=self.demolition_and_recycling_data.get(KEY_STEEL_REBAR_SCRAP_RATE),
+            material_recyclability=self.demolition_and_recycling_data.get(KEY_STEEL_REBAR_RECYLABILITY),
+            design_life=self.financial_data.get(KEY_DESIGN_LIFE),
+            analysis_period=self.financial_data.get(KEY_ANALYSIS_PERIOD),
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA)
+        )
+        print(f"\nRecycling Cost of Steel Rebar: ", steel_rebar_recycle_cost)
+
+        #-------Structural-Steel-Cost-----------------------------------
+        struct_steel_recycle_cost = component.calculate_cost(
+            total_material_cost=struct_steel_cost,
+            material_scrap_rate=self.demolition_and_recycling_data.get(KEY_STRUCT_STEEL_SCRAP_RATE),
+            material_recyclability=self.demolition_and_recycling_data.get(KEY_STRUCT_STEEL_RECYLABILITY),
+            design_life=self.financial_data.get(KEY_DESIGN_LIFE),
+            analysis_period=self.financial_data.get(KEY_ANALYSIS_PERIOD),
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA)
+        )
+        print(f"\nRecycling Cost of Structural Steel: ", struct_steel_recycle_cost)
+
+        #-------PreStressed-Tendons-Cost-----------------------------------
+        pre_stressed_tendons_recycle_cost = component.calculate_cost(
+            total_material_cost=pre_stressed_tendons_cost,
+            material_scrap_rate=self.demolition_and_recycling_data.get(KEY_PS_TENDONS_SCRAP_RATE),
+            material_recyclability=self.demolition_and_recycling_data.get(KEY_PS_TENDONS_RECYLABILITY),
+            design_life=self.financial_data.get(KEY_DESIGN_LIFE),
+            analysis_period=self.financial_data.get(KEY_ANALYSIS_PERIOD),
+            inflation_rate=self.financial_data.get(KEY_INFLATION_RATE),
+            discount_rate=self.financial_data.get(KEY_DISCOUNT_RATE_IA)
+        )
+        print(f"\nRecycling Cost of Pre Stressed Tendon Cost: ", pre_stressed_tendons_recycle_cost)
+
+        total_recycling_cost = steel_rebar_recycle_cost + struct_steel_recycle_cost + pre_stressed_tendons_recycle_cost
+
+        self.results[COST_RECYCLING] = total_recycling_cost
+        print(f"\n5.Total Recycling Cost: ", total_recycling_cost)
+        return total_recycling_cost
+
+
+    #==========End-Of-Life-Stage-Cost-End====================
 
     # 4. Called on next from bridge_and_traffic_data.py
     def calculate_irc_road_cost(self, data: List) -> float:
@@ -599,74 +922,6 @@ class DatabaseManager:
         print("\nAdditional Carbon Emission Cost:", additional_carbon_emission_component.calculate_cost())  # INR
         return additional_carbon_emission_component.calculate_cost()
 
-    # 6. Called on next from maintainance_repair_data.py
-    def periodic_maintainance_cost(self, data: List, total_initial_cost) -> float:
-        maintenance_cost_rate = PeriodicMaintenanceCost(
-            maintenance_cost_rate=float(data[0]),
-            construction_cost=total_initial_cost,
-            discount_rate=self.discount_rate,
-            period=float(data[3]),
-            design_life=self.design_life
-        )
-        print("\nPeriodic Maintenance Cost:", maintenance_cost_rate.calculate_cost())  # INR
-
-        return maintenance_cost_rate.calculate_cost()
-    
-    # 7. Periodic Maintenance Carbon Emission Cost Calculation (Concrete only)
-    def periodic_maintainance_carbon_emission_cost(self, data: List):
-        unit_conversions = {
-            "cum": 2549.25,
-            "kg": 1.0,
-            "mt": 1000.0,
-            "rmt": 1.0,
-            "sqm": 1.0,
-            "ltr": 1.0
-        }
-
-        # Get carbon emission data from the database
-        c_data = self.get_carbon_emission_data()
-
-        maintenance_concrete_emission_factor = 0
-        maintenance_concrete_kg = 0
-        for item in c_data:
-            type = item.get(KEY_TYPE)
-            if type[-8:].lower() == "concrete":
-                qty = item.get(KEY_QUANTITY)
-                unit = item.get(KEY_UNIT_M3)
-                # convert quantity to kg
-                qty = qty * unit_conversions.get(unit.lower())
-                maintenance_concrete_emission_factor = item.get(KEY_CARBON_EMISSION_FACTOR)
-                maintenance_concrete_kg += qty          
-
-        maintenance_carbon_cost = self.carbon_cost
-        maintenance_period = float(data[3])
-        periodic_maintenance_concrete_carbon_component = PeriodicMaintenanceCarbonCost(
-            material_quantity=maintenance_concrete_kg,
-            carbon_emission_factor=maintenance_concrete_emission_factor,
-            carbon_cost=maintenance_carbon_cost,
-            discount_rate=self.discount_rate,
-            period=maintenance_period,
-            design_life=self.design_life
-        )
-        print("\nPeriodic Maintenance Carbon Emission Cost (Concrete only):", periodic_maintenance_concrete_carbon_component.calculate_cost())  # INR
-        return periodic_maintenance_concrete_carbon_component.calculate_cost()
-
-    # 8. Annual Routine Inspection Cost Calculation
-    def routine_inspection_cost(self, data: List, total_initial_construction_cost: float) -> float:
-
-        inspection_rate = float(data[1])
-        inspection_period = float(data[4])
-
-        inspection_component = RoutineInspectionCost(
-            inspection_cost_rate=inspection_rate,  # Use inspection_rate as inspection cost rate
-            construction_cost=total_initial_construction_cost,  # Always use total_initial_construction_cost
-            discount_rate=self.discount_rate,
-            design_life=self.design_life,
-            period=inspection_period  # always annual
-        )
-        total_routine_inspection_cost = inspection_component.calculate_cost()
-        print("\nTotal Routine Inspection Cost:", total_routine_inspection_cost)  # INR
-        return total_routine_inspection_cost
 
     # 9. Repair and Rehabilitation Cost Calculation
     def repair_and_rehabilitation_cost(self, total_initial_construction_cost: float, data: List) -> float:
@@ -683,61 +938,6 @@ class DatabaseManager:
         print("\nRepair and Rehabilitation Cost:", repair_component.calculate_cost())  # INR
         return repair_component.calculate_cost()
     
-    # 10. Demolition and Disposal Cost Calculation
-    def demolition_and_disposal_cost(self, data: List, total_initial_construction_cost: float) -> float:
-        demolition_rate = float(data[0])
-
-        demolition_component = DemolitionCost(
-            demolition_rate=demolition_rate,
-            construction_cost=total_initial_construction_cost,
-            discount_rate=self.discount_rate,
-            design_life=self.design_life
-        )
-        print("\nDemolition and Disposal Cost:", demolition_component.calculate_cost())  # INR
-        return demolition_component.calculate_cost()
-
-    # 11. Recycling Cost Calculation
-    def recycling_cost(self, data: List) -> float:
-
-        # To convert to MT
-        unit_conversions = {
-            "kg": 1000.0,
-            "mt": 1.0
-        }
-
-        steel_rebar_quantity = 0
-        struct_steel_quantity = 0
-        # Get carbon emission data from the database
-        data = self.get_carbon_emission_data()
-        for item in data:
-            material = item.get(KEY_TYPE)
-            if material == "Steel Rebar":
-                steel_rebar_quantity += float(item.get(KEY_QUANTITY)) * unit_conversions.get(item.get(KEY_UNIT_M3))
-            elif material == "Structural Steel":
-                struct_steel_quantity += float(item.get(KEY_QUANTITY)) * unit_conversions.get(item.get(KEY_UNIT_M3))
-
-        # Structural Steel-----------recycling-cost-----------------------------------------
-        ss_recycling_component = RecyclingCost(
-            scrap_value=float(data[1]),
-            quantity=struct_steel_quantity,
-            scrap_rate=float(data[2]),
-            discount_rate=self.discount_rate,
-            design_life=self.design_life
-        )
-        print("\nRecycling Cost (Structural Steel):", ss_recycling_component.calculate_cost())
-
-        # Steel-rebar-----------------recycling-cost-----------------------------------------
-        sr_recycling_component = RecyclingCost(
-            scrap_value=float(data[3]),
-            quantity=steel_rebar_quantity,
-            scrap_rate=float(data[4]),
-            discount_rate=self.discount_rate,
-            design_life=self.design_life
-        )
-        print("\nRecycling Cost (Steel Rebar):", sr_recycling_component.calculate_cost())
-
-        return sr_recycling_component.calculate_cost() + ss_recycling_component.calculate_cost()
-
     # 12. Reconstruction Cost Calculation 
     def reconstruction_cost(self, initial_construction_cost: float,
                             demolition_cost: float,
@@ -771,5 +971,7 @@ class DatabaseManager:
             reconstruction_result = 0
         print("\nReconstruction Cost:", reconstruction_result)  # INR
         return reconstruction_result
+    
+    
         
         

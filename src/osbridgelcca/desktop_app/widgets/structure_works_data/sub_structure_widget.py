@@ -168,13 +168,13 @@ class ComponentWidget(QWidget):
 
         type_material_combo = QComboBox()
         type_material_combo.setObjectName("MaterialGridInput")
-        type_material_combo.setFixedWidth(fixed_input_width)
+        type_material_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.material_grid_layout.addWidget(type_material_combo, row_idx, 0)
         row_widgets[KEY_TYPE] = type_material_combo
 
         grade_combo = QComboBox()
         grade_combo.setObjectName("MaterialGridInput")
-        grade_combo.setFixedWidth(fixed_input_width)
+        grade_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.material_grid_layout.addWidget(grade_combo, row_idx, 1)
         row_widgets[KEY_GRADE] = grade_combo
         grade_combo.currentTextChanged.connect(self._on_value_changed)
@@ -183,14 +183,14 @@ class ComponentWidget(QWidget):
         quantity_edit.setValidator(validator)
         quantity_edit.setPlaceholderText("0")
         quantity_edit.setObjectName("MaterialGridInput")
-        quantity_edit.setFixedWidth(fixed_input_width)
+        quantity_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.material_grid_layout.addWidget(quantity_edit, row_idx, 2)
         row_widgets[KEY_QUANTITY] = quantity_edit
         quantity_edit.textChanged.connect(self._on_value_changed)
 
         unit_combo_m3 = QComboBox()
         unit_combo_m3.setObjectName("MaterialGridInput")
-        unit_combo_m3.setFixedWidth(fixed_input_width)
+        unit_combo_m3.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.material_grid_layout.addWidget(unit_combo_m3, row_idx, 3)
         row_widgets[KEY_UNIT_M3] = unit_combo_m3
         unit_combo_m3.currentTextChanged.connect(self._on_value_changed)
@@ -199,14 +199,14 @@ class ComponentWidget(QWidget):
         rate_edit.setValidator(validator)
         rate_edit.setPlaceholderText("0.00")
         rate_edit.setObjectName("MaterialGridInput")
-        rate_edit.setFixedWidth(fixed_input_width)
+        rate_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.material_grid_layout.addWidget(rate_edit, row_idx, 4)
         row_widgets[KEY_RATE] = rate_edit
         rate_edit.textChanged.connect(self._on_value_changed)
 
         rate_data_source_edit = QLineEdit()
         rate_data_source_edit.setObjectName("MaterialGridInput")
-        rate_data_source_edit.setFixedWidth(fixed_input_width)
+        rate_data_source_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.material_grid_layout.addWidget(rate_data_source_edit, row_idx, 5)
         row_widgets[KEY_RATE_DATA_SOURCE] = rate_data_source_edit
         rate_data_source_edit.textChanged.connect(self._on_value_changed)
@@ -447,7 +447,7 @@ class SubStructure(QWidget):
             }
             
             QPushButton#lock_button {
-                background-color: #FFFFFF;
+                background: transparent;
                 border: 1px solid #E0E0E0;
                 border-radius: 12px;
                 color: #3F3E5E;
@@ -456,17 +456,17 @@ class SubStructure(QWidget):
                 font-weight: bold;
             }
             QPushButton#lock_button:hover {
-                background-color: #F8F8F8;
+                background: transparent;
                 border-color: #C0C0C0;
             }
             QPushButton#lock_button[locked="true"] {
-                background-color: #FFE0E0;
+                background: transparent;
                 border-color: #FF9999;
                 color: #CC0000;
             }
             QPushButton#lock_button[locked="false"] {
-                background-color: #E0FFE0;
-                border-color: #99FF99;
+                background: transparent;
+                border-color: #45913E;
                 color: #00AA00;
             }
             
@@ -671,8 +671,11 @@ class SubStructure(QWidget):
         self.state_changed = True
     
     def save_data(self):
+        from pprint import pprint
         data = self.collect_data()
-        print("\nCollected Data from UI:",data)
+        print("\nCollected Data from Sub-Structure UI:")
+        pprint(data)
+            
         if self.data_id:
             self.data_id = self.database_manager.replace_structure_work_rows(KEY_SUBSTRUCTURE, data, self.data_id)
         else:

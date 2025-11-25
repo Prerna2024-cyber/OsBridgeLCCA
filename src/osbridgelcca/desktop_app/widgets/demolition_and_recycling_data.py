@@ -163,8 +163,8 @@ class DemolitionAndRecyclingData(QWidget):
 
         field_width = 200 # More compact width for input fields
 
-        # 1. Demolition Cost rate as percentage to total construction cost
-        label = QLabel("Demolition Cost rate as\npercentage to total construction cost")
+        # 1. Demolition and Disposal Rate
+        label = QLabel("Demolition and Disposal Cost\n(Percentage of Initial Construction Cost)")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 0, 0, 1, 1)
         demolition_widget = QWidget(self.general_widget)
@@ -173,7 +173,7 @@ class DemolitionAndRecyclingData(QWidget):
         demolition_layout.setSpacing(10)
         demolition_input = QLineEdit()
         self.widgets.append(demolition_input)
-        demolition_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        demolition_input.setAlignment(Qt.AlignmentFlag.AlignLeft)
         demolition_input.setFixedWidth(field_width)
         demolition_input.setText("10")
         demolition_input.setStyleSheet("""
@@ -191,8 +191,8 @@ class DemolitionAndRecyclingData(QWidget):
         demolition_layout.addStretch(1)
         grid_layout.addWidget(demolition_widget, 0, 1, 1, 1, alignment=Qt.AlignLeft)
 
-        # 2. Scrap Value of Structural Steel
-        label = QLabel("Scrap Value of Structural Steel")
+        # 2. Structural Steel Scrap Rate
+        label = QLabel("Structural Steel Scrap Rate")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 1, 0, 1, 1)
         scrap_value_widget = QWidget(self.general_widget)
@@ -201,7 +201,7 @@ class DemolitionAndRecyclingData(QWidget):
         scrap_value_layout.setSpacing(10)
         scrap_value_input = QLineEdit()
         self.widgets.append(scrap_value_input)
-        scrap_value_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        scrap_value_input.setAlignment(Qt.AlignmentFlag.AlignLeft)
         scrap_value_input.setFixedWidth(field_width)
         scrap_value_input.setText("26000")
         scrap_value_input.setStyleSheet("""
@@ -219,8 +219,8 @@ class DemolitionAndRecyclingData(QWidget):
         scrap_value_layout.addStretch(1)
         grid_layout.addWidget(scrap_value_widget, 1, 1, 1, 1, alignment=Qt.AlignLeft)
 
-        # 3. Structural Steel Scrap
-        label = QLabel("Structural Steel Scrap")
+        # 3. Structural Steel Recylability
+        label = QLabel("Structural Steel Recylability")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 2, 0, 1, 1)
         steel_scrap_widget = QWidget(self.general_widget)
@@ -229,7 +229,7 @@ class DemolitionAndRecyclingData(QWidget):
         steel_scrap_layout.setSpacing(10)
         steel_scrap_input = QLineEdit()
         self.widgets.append(steel_scrap_input)
-        steel_scrap_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        steel_scrap_input.setAlignment(Qt.AlignmentFlag.AlignLeft)
         steel_scrap_input.setFixedWidth(field_width)
         steel_scrap_input.setText("95")
         steel_scrap_input.setStyleSheet("""
@@ -247,8 +247,8 @@ class DemolitionAndRecyclingData(QWidget):
         steel_scrap_layout.addStretch(1)
         grid_layout.addWidget(steel_scrap_widget, 2, 1, 1, 1, alignment=Qt.AlignLeft)
 
-        # 4. Scrap Value of Steel Rebar
-        label = QLabel("Scrap Value of Steel Rebar")
+        # 4. Steel Rebar Scrap Rate
+        label = QLabel("Steel Rebar Scrap Rate")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 3, 0, 1, 1)
         scrap_value_widget = QWidget(self.general_widget)
@@ -257,7 +257,7 @@ class DemolitionAndRecyclingData(QWidget):
         scrap_value_layout.setSpacing(10)
         scrap_value_input = QLineEdit()
         self.widgets.append(scrap_value_input)
-        scrap_value_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        scrap_value_input.setAlignment(Qt.AlignmentFlag.AlignLeft)
         scrap_value_input.setFixedWidth(field_width)
         scrap_value_input.setText("32500")
         scrap_value_input.setStyleSheet("""
@@ -275,8 +275,8 @@ class DemolitionAndRecyclingData(QWidget):
         scrap_value_layout.addStretch(1)
         grid_layout.addWidget(scrap_value_widget, 3, 1, 1, 1, alignment=Qt.AlignLeft)
 
-        # 4. Steel Rebar Scrap
-        label = QLabel("Steel Rebar Scrap")
+        # 4. Steel Rebar Recylability
+        label = QLabel("Steel Rebar Recylability")
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 4, 0, 1, 1)
         steel_scrap_widget = QWidget(self.general_widget)
@@ -285,7 +285,7 @@ class DemolitionAndRecyclingData(QWidget):
         steel_scrap_layout.setSpacing(10)
         steel_scrap_input = QLineEdit()
         self.widgets.append(steel_scrap_input)
-        steel_scrap_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        steel_scrap_input.setAlignment(Qt.AlignmentFlag.AlignLeft)
         steel_scrap_input.setFixedWidth(field_width)
         steel_scrap_input.setText("75")
         steel_scrap_input.setStyleSheet("""
@@ -302,6 +302,62 @@ class DemolitionAndRecyclingData(QWidget):
         steel_scrap_layout.addWidget(suggested_label3)
         steel_scrap_layout.addStretch(1)
         grid_layout.addWidget(steel_scrap_widget, 4, 1, 1, 1, alignment=Qt.AlignLeft)
+
+        # 5. Pre Stressed Tendons Scrap Rate
+        label = QLabel("Pre Stressed Tendons Scrap Rate")
+        label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        grid_layout.addWidget(label, 5, 0, 1, 1)
+        steel_scrap_widget = QWidget(self.general_widget)
+        steel_scrap_layout = QHBoxLayout(steel_scrap_widget)
+        steel_scrap_layout.setContentsMargins(0,0,0,0)
+        steel_scrap_layout.setSpacing(10)
+        steel_scrap_input = QLineEdit()
+        self.widgets.append(steel_scrap_input)
+        steel_scrap_input.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        steel_scrap_input.setFixedWidth(field_width)
+        steel_scrap_input.setText("32500")
+        steel_scrap_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #DDDCE0;
+                border-radius: 10px;
+                padding: 3px 10px;
+            }
+        """)
+        steel_scrap_layout.addWidget(steel_scrap_input)
+        steel_scrap_layout.addWidget(QLabel("(INR/MT)"))
+        suggested_label3 = QLabel("Suggested")
+        suggested_label3.setStyleSheet("color: #B3AEAE; font-size: 10px;")
+        steel_scrap_layout.addWidget(suggested_label3)
+        steel_scrap_layout.addStretch(1)
+        grid_layout.addWidget(steel_scrap_widget, 5, 1, 1, 1, alignment=Qt.AlignLeft)
+
+        # 6. Pre Stressed Tendons Recylability
+        label = QLabel("Pre Stressed Tendons Recylability")
+        label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        grid_layout.addWidget(label, 6, 0, 1, 1)
+        steel_scrap_widget = QWidget(self.general_widget)
+        steel_scrap_layout = QHBoxLayout(steel_scrap_widget)
+        steel_scrap_layout.setContentsMargins(0,0,0,0)
+        steel_scrap_layout.setSpacing(10)
+        steel_scrap_input = QLineEdit()
+        self.widgets.append(steel_scrap_input)
+        steel_scrap_input.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        steel_scrap_input.setFixedWidth(field_width)
+        steel_scrap_input.setText("60")
+        steel_scrap_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #DDDCE0;
+                border-radius: 10px;
+                padding: 3px 10px;
+            }
+        """)
+        steel_scrap_layout.addWidget(steel_scrap_input)
+        steel_scrap_layout.addWidget(QLabel("(%)"))
+        suggested_label3 = QLabel("Suggested")
+        suggested_label3.setStyleSheet("color: #B3AEAE; font-size: 10px;")
+        steel_scrap_layout.addWidget(suggested_label3)
+        steel_scrap_layout.addStretch(1)
+        grid_layout.addWidget(steel_scrap_widget, 6, 1, 1, 1, alignment=Qt.AlignLeft)
 
         self.general_layout.addLayout(grid_layout)
         self.general_layout.addStretch(1)
@@ -340,50 +396,38 @@ class DemolitionAndRecyclingData(QWidget):
 
 
     def collect_data(self):
-        data = []
-        for widget in self.widgets:
-            print(f"Collecting data from widget: {widget}")
-            if isinstance(widget, QComboBox):
-                value = widget.currentText()
-            elif isinstance(widget, QLineEdit):
-                value = widget.text()
-            data.append(value)
-
-        data[0] = float(data[0])/100
-        data[2] = float(data[2])/100
+        from pprint import pprint
+        data = {
+            KEY_DEMOLITION_DISPOSAL_COST: 0.0 if not self.widgets[0].text() else float(self.widgets[0].text())/100,
+            KEY_STRUCT_STEEL_SCRAP_RATE: 0.0 if not self.widgets[1].text() else float(self.widgets[1].text()),
+            KEY_STRUCT_STEEL_RECYLABILITY: 0.0 if not self.widgets[2].text() else float(self.widgets[2].text())/100,
+            KEY_STEEL_REBAR_SCRAP_RATE: 0.0 if not self.widgets[3].text() else float(self.widgets[3].text()),
+            KEY_STEEL_REBAR_RECYLABILITY: 0.0 if not self.widgets[4].text() else float(self.widgets[4].text())/100,
+            KEY_PS_TENDONS_SCRAP_RATE: 0.0 if not self.widgets[5].text() else float(self.widgets[5].text()),
+            KEY_PS_TENDONS_RECYLABILITY: 0.0 if not self.widgets[6].text() else float(self.widgets[6].text())/100
+        }
         
-        print("Collected Data from UI:",data)     
+        print("\nCollected Data from Demolition & Recycling UI:")
+        pprint(data) 
 
-        # calculate demolition and disposal cost
-        total_initial_construction_cost = self.parent.results.get(COST_TOTAL_INIT_CONST)
-        cost = self.database_manager.demolition_and_disposal_cost(data, total_initial_construction_cost)
-        # Update Results Dict
-        self.parent.results[COST_DEMOLITION_DISPOSAL] = cost
+        # Save UI Data to Backend
+        self.database_manager.demolition_and_recycling_data = data
 
-        # recycling cost
-        cost = self.database_manager.recycling_cost(data)
-        # Update Results Dict
-        self.parent.results[COST_RECYCLING] = cost
+        # Demolition and Disposal Cost
+        self.database_manager.demolition_and_disposal_cost()
 
-        # reconstruction cost
-        initial_construction_cost = self.parent.results[COST_TOTAL_INIT_CONST]
-        demolition_cost = self.parent.results[COST_DEMOLITION_DISPOSAL]
-        carbon_emission_cost = self.parent.results[COST_TOTAL_INIT_CARBON_EMISSION]
-        time_cost = self.parent.results[COST_TIME]
-        roaduser_cost = self.parent.results[COST_TOTAL_ROAD_USER]
-        rerouting_carbon_cost = self.parent.results[COST_ADDITIONAL_CARBON_EMISSION]
+        # Demolition and Disposal related Carbon Emission
+        self.database_manager.demolition_disposal_carbon_emission_cost()
 
-        cost = self.database_manager.reconstruction_cost(initial_construction_cost,
-                                                         demolition_cost,
-                                                         carbon_emission_cost,
-                                                         time_cost,
-                                                         roaduser_cost,
-                                                         rerouting_carbon_cost
-                                                         )
-        # Update Results Dict
-        self.parent.results[COST_RECONSTRUCTION] = cost
+        # Carbon Emission due to Rerouting during Demolition and Disposal
+        self.database_manager.demolition_disposal_rerouting_carbon_emission_cost()
 
-        print(f"Results:\n{self.parent.results}")
+        # Recycling Cost
+        self.database_manager.recycling_cost()
+
+        
+        print("Results:\n")
+        pprint(self.database_manager.results)
 
 #----------------Standalone-Test-Code--------------------------------
 

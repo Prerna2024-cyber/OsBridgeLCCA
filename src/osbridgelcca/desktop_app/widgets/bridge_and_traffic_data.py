@@ -2,7 +2,7 @@ from math import comb
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import QCoreApplication, Qt, QSize, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QLineEdit, QComboBox, QGridLayout, QWidget, QLabel, QVBoxLayout, QScrollArea, QSpacerItem, QSizePolicy, QFrame)
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QIntValidator
 from .utils.data import *
 import sys
 import os
@@ -16,7 +16,7 @@ class BridgeAndTrafficData(QWidget):
         self.parent = parent
         self.database_manager = database
         self.data = bridge_traffic_data.get(KEY_BRIDGE_TRAFFIC)
-        self.traffic_widgets = []
+        self.widgets = []
 
         self.text_box_width = 200
         self.setStyleSheet("""
@@ -204,10 +204,10 @@ class BridgeAndTrafficData(QWidget):
         grid_layout.addWidget(label, 0, 0, 1, 1)
 
         valuer_combo = QComboBox(self.general_widget)
+        self.widgets.append(valuer_combo)
         valuer_combo.setFixedWidth(self.text_box_width)
         valuer_combo.setPlaceholderText("Select")
         valuer_combo.addItems(self.data[KEY_LANES][KEY_OPTIONS])
-        self.traffic_widgets.append(valuer_combo)
         grid_layout.addWidget(valuer_combo, 0, 1, 1, 1)
 
         info_icon = QLabel(" ")
@@ -220,6 +220,7 @@ class BridgeAndTrafficData(QWidget):
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 1, 0, 1, 1)
         input_widget = QLineEdit(self.general_widget)
+        self.widgets.append(input_widget)
         input_widget.setFixedWidth(self.text_box_width)
         input_widget.setStyleSheet("""
             QLineEdit {
@@ -228,7 +229,6 @@ class BridgeAndTrafficData(QWidget):
                 padding: 3px 10px;
             }
         """)
-        self.traffic_widgets.append(input_widget)
         grid_layout.addWidget(input_widget, 1, 1, 1, 1)
         info_icon = QLabel("(km)")
         info_icon.setStyleSheet("color: grey; font-size: 14px;")
@@ -240,6 +240,7 @@ class BridgeAndTrafficData(QWidget):
         label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid_layout.addWidget(label, 2, 0, 1, 1)
         input_widget = QLineEdit(self.general_widget)
+        self.widgets.append(input_widget)
         input_widget.setFixedWidth(self.text_box_width)
         input_widget.setStyleSheet("""
             QLineEdit {
@@ -248,7 +249,6 @@ class BridgeAndTrafficData(QWidget):
                 padding: 3px 10px;
             }
         """)
-        self.traffic_widgets.append(input_widget)
         grid_layout.addWidget(input_widget, 2, 1, 1, 1)
         info_icon = QLabel("(min)")
         info_icon.setStyleSheet("color: grey; font-size: 14px;")
@@ -261,11 +261,11 @@ class BridgeAndTrafficData(QWidget):
         grid_layout.addWidget(label, 3, 0, 1, 1)
 
         valuer_combo = QComboBox(self.general_widget)
+        self.widgets.append(valuer_combo)
         valuer_combo.setFixedWidth(self.text_box_width)
         valuer_combo.setPlaceholderText("Select")
         valuer_combo.addItems(self.data[KEY_ROADROUGHNESS][KEY_OPTIONS] + ["Custom"])
         valuer_combo.currentIndexChanged.connect(lambda index,combo=valuer_combo: self.custom_combo_input(index, combo))
-        self.traffic_widgets.append(valuer_combo)
         grid_layout.addWidget(valuer_combo, 3, 1, 1, 1)
 
         info_icon = QLabel("(mm/km)")
@@ -283,7 +283,7 @@ class BridgeAndTrafficData(QWidget):
         valuer_combo.setPlaceholderText("Select")
         valuer_combo.addItems(self.data[KEY_ROAD_RISE_AND_FALL][KEY_OPTIONS] + ["Custom"])
         valuer_combo.currentIndexChanged.connect(lambda index,combo=valuer_combo: self.custom_combo_input(index, combo))
-        self.traffic_widgets.append(valuer_combo)
+        self.widgets.append(valuer_combo)
         grid_layout.addWidget(valuer_combo, 4, 1, 1, 1)
 
         info_icon = QLabel("(m/km)")
@@ -301,7 +301,7 @@ class BridgeAndTrafficData(QWidget):
         valuer_combo.setPlaceholderText("Select")
         valuer_combo.addItems(self.data[KEY_ROAD_RISE_AND_FALL][KEY_OPTIONS] + ["Custom"])
         valuer_combo.currentIndexChanged.connect(lambda index,combo=valuer_combo: self.custom_combo_input(index, combo))
-        self.traffic_widgets.append(valuer_combo)
+        self.widgets.append(valuer_combo)
         grid_layout.addWidget(valuer_combo, 5, 1, 1, 1)
 
         info_icon = QLabel("(m/km)")
@@ -319,7 +319,7 @@ class BridgeAndTrafficData(QWidget):
         valuer_combo.setPlaceholderText("Select")
         valuer_combo.addItems(self.data[KEY_TYPE_OF_ROAD][KEY_OPTIONS])
         grid_layout.addWidget(valuer_combo, 6, 1, 1, 1)
-        self.traffic_widgets.append(valuer_combo)     
+        self.widgets.append(valuer_combo)     
 
         info_icon = QLabel(" ")
         info_icon.setStyleSheet("color: grey; font-size: 14px;")
@@ -339,7 +339,7 @@ class BridgeAndTrafficData(QWidget):
                 padding: 3px 10px;
             }
         """)
-        self.traffic_widgets.append(input_widget)
+        self.widgets.append(input_widget)
         grid_layout.addWidget(input_widget, 7, 1, 1, 1)
         info_icon = QLabel("(accidents/million km)")
         info_icon.setStyleSheet("color: grey; font-size: 14px;")
@@ -370,7 +370,7 @@ class BridgeAndTrafficData(QWidget):
             }
         """)
 
-        per_dist_label = QLabel("% Accident Distribution")
+        per_dist_label = QLabel("Percentage Accident Distribution")
         per_dist_label.setAlignment(Qt.AlignCenter)
         per_dist_label.setStyleSheet("""
             QLabel {
@@ -394,7 +394,6 @@ class BridgeAndTrafficData(QWidget):
             v_label.setAlignment(Qt.AlignCenter)
             v_label.setStyleSheet("background-color: #FFFFFF; border: 1px solid #FFFFFF; border-radius: 10px; padding: 10px 10px 10px 1px;")
             v0_input = QLineEdit()
-            self.traffic_widgets.append(v0_input)
             v0_input.setFixedWidth(self.text_box_width*2)
             v0_input.setStyleSheet("""
                 QLineEdit {
@@ -450,7 +449,7 @@ class BridgeAndTrafficData(QWidget):
             }
         """)
 
-        per_dist_label = QLabel("% Accident Distribution")
+        per_dist_label = QLabel("Percentage Accident Distribution")
         per_dist_label.setAlignment(Qt.AlignCenter)
         per_dist_label.setStyleSheet("""
             QLabel {
@@ -473,6 +472,7 @@ class BridgeAndTrafficData(QWidget):
             "MCV",
             "HCV"
         ]
+        self.average_daily_traffic = []
 
         for i, vehicle in enumerate(vehicles):
             v_label = QLabel(f"{vehicle}:")
@@ -480,7 +480,8 @@ class BridgeAndTrafficData(QWidget):
             v_label.setAlignment(Qt.AlignCenter)
             v_label.setStyleSheet("background-color: #FFFFFF; border: 1px solid #FFFFFF; border-radius: 10px; padding: 10px 10px 10px 1px;")
             v0_input = QLineEdit()
-            self.traffic_widgets.append(v0_input)
+            v0_input.setValidator(QIntValidator(v0_input))
+            self.average_daily_traffic.append(v0_input)
             v0_input.setFixedWidth(self.text_box_width)
             v0_input.setStyleSheet("""
                 QLineEdit {
@@ -491,7 +492,6 @@ class BridgeAndTrafficData(QWidget):
                 }
             """)
             v1_input = QLineEdit()
-            self.traffic_widgets.append(v1_input)
             v1_input.setFixedWidth(self.text_box_width)
             v1_input.setStyleSheet("""
                 QLineEdit {
@@ -555,23 +555,37 @@ class BridgeAndTrafficData(QWidget):
             combo.lineEdit().setPlaceholderText("Type here...")
     
     def collect_data(self):
-        data = []
-        for widget in self.traffic_widgets:
-            if isinstance(widget, QComboBox):
-                value = widget.currentText()
-            elif isinstance(widget, QLineEdit):
-                value = widget.text() if widget.text() != "" else "0"
-            data.append(value)
-        print("Collected Data from UI:",data)     
+        from pprint import pprint
+        traffic_data = {
+            KEY_TWO_WHEELER: 0 if not self.average_daily_traffic[0].text() else int(self.average_daily_traffic[0].text()),
+            KEY_SMALL_CARS: 0 if not self.average_daily_traffic[0].text() else int(self.average_daily_traffic[1].text()),
+            KEY_BIG_CARS: 0 if not self.average_daily_traffic[0].text() else int(self.average_daily_traffic[2].text()),
+            KEY_ORDINARY_BUS: 0 if not self.average_daily_traffic[0].text() else int(self.average_daily_traffic[3].text()),
+            KEY_DELUXE_BUS: 0 if not self.average_daily_traffic[0].text() else int(self.average_daily_traffic[3].text()),
+            KEY_LCV: 0 if not self.average_daily_traffic[0].text() else int(self.average_daily_traffic[4].text()),
+            KEY_HCV: 0 if not self.average_daily_traffic[0].text() else int(self.average_daily_traffic[5].text()),
+            KEY_MCV: 0 if not self.average_daily_traffic[0].text() else int(self.average_daily_traffic[6].text())
+        }
+        # Collect other data
+        data = {
+            KEY_ALTER_ROAD_CARRIAGEWAY: self.widgets[0].currentText(),
+            KEY_ADDIT_REROUTING_DISTANCE: 0.0 if not self.widgets[1].text() else float(self.widgets[1].text()),
+            KEY_ADDIT_TRAVEL_TIME: 0.0 if not self.widgets[2].text() else float(self.widgets[2].text()),
+            KEY_ROAD_ROUGHNESS: self.widgets[3].currentText(),
+            KEY_ROAD_RISE: self.widgets[4].currentText(),
+            KEY_ROAD_FALL: self.widgets[5].currentText(),
+            KEY_ROAD_TYPE: self.widgets[6].currentText(),
+            KEY_CRASH_RATE: 0.0 if not self.widgets[7].text() else float(self.widgets[7].text())
+        }
+        print("\nCollected Traffic Composition Data from UI:")
+        pprint(traffic_data)
 
-        # calculate Road User Cost Calculation
-        road_user_data = self.database_manager.calculate_irc_road_cost(data)
-        # Update Results Dict
-        self.parent.results[COST_TOTAL_ROAD_USER] = road_user_data
-        
-        # Calculate additional carbon emission costs
-        cost = self.database_manager.additional_carbon_emission_cost(data)
-        self.parent.results[COST_ADDITIONAL_CARBON_EMISSION] = cost
+        # Save UI Data to Backend
+        self.database_manager.traffic_data = data
+        self.database_manager.daily_average_traffic_data = traffic_data
+
+        # Carbon Emission due to Rerouting during Initial Construction
+        self.database_manager.init_carbon_emission_rerouting()
     
     def close_widget(self):
         self.closed.emit()

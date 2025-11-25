@@ -10,36 +10,32 @@ class ComponentWidget(QWidget):
         super().__init__(parent)
         self.widgets = []
         self.data = data
-        self.material_rows = [] # To store references to widgets in each material row
-        self.current_material_row_idx = 1 # Start index for material rows (0 is header)    
+        self.material_rows = []
+        self.current_material_row_idx = 1
 
         self.init_ui()
 
     def init_ui(self):
-        self.component_first_scroll_content_layout = QVBoxLayout(self) # Set QVBoxLayout directly on self
+        self.component_first_scroll_content_layout = QVBoxLayout(self)
         self.component_first_scroll_content_layout.setContentsMargins(10, 10, 10, 10)
         self.component_first_scroll_content_layout.setSpacing(10)
 
         # --- Material Details Grid Layout ---
         self.material_grid_layout = QGridLayout()
         self.material_grid_layout.setHorizontalSpacing(10)
-        self.material_grid_layout.setVerticalSpacing(5)
+        self.material_grid_layout.setVerticalSpacing(10)  # Changed from 5 to 10
 
-        # Header Row - Updated headers for clarity (no specific unit in header now)
+        # Header Row
         headers = ["Type of Material and Grade", "Quantity", "Unit", "Embodied Carbon Energy", "Carbon Emission Factor"]
         for col, header_text in enumerate(headers):
             label = QLabel(header_text)
             label.setAlignment(Qt.AlignCenter)
             label.setObjectName("MaterialGridLabel")
-            if header_text=="Embodied Carbon Energy":
-               self.material_grid_layout.addWidget(label, 0, col, alignment=Qt.AlignmentFlag.AlignRight)
-            else: 
-
-               self.material_grid_layout.addWidget(label, 0, col, alignment=Qt.AlignmentFlag.AlignCenter)   
+            self.material_grid_layout.addWidget(label, 0, col, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.component_first_scroll_content_layout.addLayout(self.material_grid_layout)
     
-        # Add initial two material rows
+        # Add initial material rows
         for item in self.data:
             self.widgets.append(self.add_material_row(item))
             
@@ -47,15 +43,14 @@ class ComponentWidget(QWidget):
         self.add_material_button = QPushButton("+ Add Material")
         self.add_material_button.setObjectName("add_material_button")
         self.add_material_button.clicked.connect(self.add_material_row)
+        
+        # Add spacing before the button
+        self.component_first_scroll_content_layout.addSpacing(10)
         self.component_first_scroll_content_layout.addWidget(self.add_material_button, alignment=Qt.AlignCenter)
         
     def add_material_row(self, item=[]):
         row_idx = self.current_material_row_idx
         row_widgets = []
-
-        # Set fixed width for input widgets.
-        fixed_input_width_combo = 80
-        fixed_input_width_line_edit = 80
 
         # Type of Material (Column 0)
         if item:
@@ -65,8 +60,9 @@ class ComponentWidget(QWidget):
             type_material = QLineEdit()
             type_material.setPlaceholderText("Material...")
         type_material.setObjectName("MaterialGridInput")
-        type_material.setFixedWidth(fixed_input_width_combo)
-        self.material_grid_layout.addWidget(type_material, row_idx, 0, alignment=Qt.AlignmentFlag.AlignHCenter)
+        type_material.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        type_material.setMinimumWidth(200)
+        self.material_grid_layout.addWidget(type_material, row_idx, 0)
 
         # Quantity (Column 1)
         quantity_edit = QLineEdit()
@@ -74,8 +70,10 @@ class ComponentWidget(QWidget):
             quantity_edit.setText(str(item[2]))
             quantity_edit.setReadOnly(True)
         quantity_edit.setObjectName("MaterialGridInput")
-        quantity_edit.setFixedWidth(fixed_input_width_line_edit)
-        self.material_grid_layout.addWidget(quantity_edit, row_idx, 1, alignment=Qt.AlignmentFlag.AlignHCenter)
+        quantity_edit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        quantity_edit.setMinimumWidth(100)
+        quantity_edit.setMaximumWidth(100)
+        self.material_grid_layout.addWidget(quantity_edit, row_idx, 1)
 
         # Unit (Column 2)
         if item:
@@ -85,66 +83,68 @@ class ComponentWidget(QWidget):
             unit_combo = QLineEdit()
             unit_combo.setPlaceholderText("Unit...")
         unit_combo.setObjectName("MaterialGridInput")
-        unit_combo.setFixedWidth(fixed_input_width_combo)
-        self.material_grid_layout.addWidget(unit_combo, row_idx, 2, alignment=Qt.AlignmentFlag.AlignHCenter)
+        unit_combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        unit_combo.setMinimumWidth(100)
+        unit_combo.setMaximumWidth(100)
+        self.material_grid_layout.addWidget(unit_combo, row_idx, 2)
 
-        # Build row_widgets array in correct order: [unit, quantity, type, grade, embodied_carbon, carbon_emission]
+        # Build row_widgets array
         if item:
             row_widgets = [item[1], item[2], item[3], item[4]]
         else:
             row_widgets = [unit_combo, quantity_edit, type_material, None]
 
-        # --- Embodied Carbon Energy (LineEdit + QLabel for unit text) - Column 3 ---
+        # --- Embodied Carbon Energy - Column 3 ---
         embodied_carbon_layout = QHBoxLayout()
-        embodied_carbon_layout.addStretch()
         embodied_carbon_layout.setContentsMargins(0, 0, 0, 0)
         embodied_carbon_layout.setSpacing(5)
 
         embodied_carbon_edit = QLineEdit()
         embodied_carbon_edit.setPlaceholderText("0.00")
         embodied_carbon_edit.setObjectName("MaterialGridInput")
-        embodied_carbon_edit.setFixedWidth(fixed_input_width_combo)
+        embodied_carbon_edit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        embodied_carbon_edit.setMinimumWidth(100)
+        embodied_carbon_edit.setMaximumWidth(100)
         embodied_carbon_layout.addWidget(embodied_carbon_edit)
 
         embodied_carbon_unit_label = QLabel("(MJ/kg)")
         embodied_carbon_unit_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         embodied_carbon_unit_label.setStyleSheet("color: #3F3E5E; font-size: 11px;")
+        embodied_carbon_unit_label.setFixedWidth(60)
         embodied_carbon_layout.addWidget(embodied_carbon_unit_label)
 
-        self.material_grid_layout.addLayout(embodied_carbon_layout, row_idx, 3, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.material_grid_layout.addLayout(embodied_carbon_layout, row_idx, 3)
         
-        # Add embodied carbon edit to row_widgets (index 4)
         row_widgets.append(embodied_carbon_edit)
 
-        # --- Carbon Emission Factor (LineEdit + QLabel for unit text) - Column 4 ---
+        # --- Carbon Emission Factor - Column 4 ---
         carbon_emission_layout = QHBoxLayout()
         carbon_emission_layout.setContentsMargins(0, 0, 0, 0)
         carbon_emission_layout.setSpacing(5)
-        carbon_emission_layout.addStretch()
 
         carbon_emission_edit = QLineEdit()
         carbon_emission_edit.setPlaceholderText("0.00")
         carbon_emission_edit.setObjectName("MaterialGridInput")
-        carbon_emission_edit.setFixedWidth(fixed_input_width_combo)
+        carbon_emission_edit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        carbon_emission_edit.setMinimumWidth(100)
+        carbon_emission_edit.setMaximumWidth(100)
         carbon_emission_layout.addWidget(carbon_emission_edit)
 
-        # Create the carbon emission unit label
         if item:
             carbon_emission_unit_label = QLabel("kg CO2e/" + str(item[1]))
         else:
             carbon_emission_unit_label = QLabel("kg CO2e/kg")
         carbon_emission_unit_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         carbon_emission_unit_label.setStyleSheet("color: #3F3E5E; font-size: 11px;")
+        carbon_emission_unit_label.setFixedWidth(80)
         carbon_emission_layout.addWidget(carbon_emission_unit_label)
 
-        carbon_emission_layout.addStretch()
         self.material_grid_layout.addLayout(carbon_emission_layout, row_idx, 4)
         
-        # Add carbon emission edit to row_widgets (index 5)
         row_widgets.append(carbon_emission_edit)
 
-        # Only connect if it's a custom row (unit_combo is QLineEdit, not QComboBox)
-        if not item:  # This means it's a custom material row
+        # Connect unit changes to update carbon emission label
+        if not item:
             def update_carbon_unit(text):
                 unit_text = text.strip() if text.strip() else "kg"
                 carbon_emission_unit_label.setText(f"kg CO2e/{unit_text}")
@@ -157,7 +157,6 @@ class ComponentWidget(QWidget):
         self.adjustSize()
 
         if not item:
-            # append widget to self.widget
             self.widgets.append(row_widgets)
 
         return row_widgets
@@ -169,7 +168,7 @@ class ComponentWidget(QWidget):
         row_idx_in_grid = -1
         for i, row_dict in enumerate(self.material_rows):
             if row_dict == row_widgets_to_remove:
-                row_idx_in_grid = i + 1  # +1 because row 0 is header
+                row_idx_in_grid = i + 1
                 break
 
         if row_idx_in_grid == -1:
@@ -184,12 +183,11 @@ class ComponentWidget(QWidget):
                     widget.deleteLater()
                 elif item.layout():
                     layout = item.layout()
-                    # Iterate and delete widgets within the layout
                     while layout.count():
                         sub_item = layout.takeAt(0)
                         if sub_item.widget():
                             sub_item.widget().deleteLater()
-                    self.material_grid_layout.removeItem(layout) # Remove the layout itself
+                    self.material_grid_layout.removeItem(layout)
 
         self.material_rows.remove(row_widgets_to_remove)
         self.current_material_row_idx -= 1
@@ -197,33 +195,32 @@ class ComponentWidget(QWidget):
         # Re-arrange remaining rows
         for r_idx in range(row_idx_in_grid, self.current_material_row_idx + 1):
             for c_idx in range(self.material_grid_layout.columnCount()):
-                item = self.material_grid_layout.itemAtPosition(r_idx + 1, c_idx) # Look at the row below
+                item = self.material_grid_layout.itemAtPosition(r_idx + 1, c_idx)
                 if item:
                     if item.widget():
                         widget = item.widget()
                         self.material_grid_layout.removeWidget(widget)
-                        self.material_grid_layout.addWidget(widget, r_idx, c_idx, alignment=Qt.AlignmentFlag.AlignHCenter) # Re-add with original alignment
+                        self.material_grid_layout.addWidget(widget, r_idx, c_idx)
                     elif item.layout():
                         layout = item.layout()
                         self.material_grid_layout.removeItem(layout)
-                        self.material_grid_layout.addLayout(layout, r_idx, c_idx, alignment=Qt.AlignmentFlag.AlignHCenter) # Re-add with original alignment
+                        self.material_grid_layout.addLayout(layout, r_idx, c_idx)
 
         self.updateGeometry()
         self.update()
         self.material_grid_layout.invalidate()
         self.adjustSize()
 
-
     def collect_data(self):
         p = []
         for row in self.widgets:
             data = {
-                KEY_TYPE: row[2].text() if isinstance(row[2], QLineEdit) else row[2],
-                KEY_GRADE: row[3].text() if isinstance(row[3], QLineEdit) else "",
-                KEY_QUANTITY: row[1].text() if isinstance(row[1], QLineEdit) else row[1],
-                KEY_UNIT_M3: row[0].text() if isinstance(row[0], QLineEdit) else row[0],
-                KEY_EMBODIED_CARBON_ENERGY: row[4].text() if row[4].text() else "0",
-                KEY_CARBON_EMISSION_FACTOR: row[5].text() if row[4].text() else "0",
+                KEY_TYPE: row[2] if not isinstance(row[2], QLineEdit) else row[2].text(),
+                KEY_GRADE: row[3] if not isinstance(row[3], QLineEdit) else row[3].text(),
+                KEY_QUANTITY: float(row[1]) if not isinstance(row[1], QLineEdit) else (0.0 if not row[1].text() else float(row[1].text())),
+                KEY_UNIT_M3: row[0] if not isinstance(row[0], QLineEdit) else ("kg" if not row[1].text() else row[1].text()),
+                KEY_EMBODIED_CARBON_ENERGY: 0.0 if not row[4].text() else float(row[4].text()),
+                KEY_CARBON_EMISSION_FACTOR: 0.0 if not row[4].text() else float(row[5].text()),
             }
             p.append(data)
         return p
@@ -233,12 +230,14 @@ class CarbonEmissionData(QWidget):
     closed = Signal()
     next = Signal(str)
     back = Signal(str)
+    
     def __init__(self, database, parent=None):
         super().__init__()
         self.database_manager = database
         self.material_store = self.database_manager.get_unique_materials_and_grades()
-        print(self.material_store)
-        self.component_widgets = [] # To store references to each ComponentWidget instance
+        from pprint import pprint
+        pprint(self.material_store)
+        self.component_widgets = []
 
         self.setStyleSheet("""
             #central_panel_widget {
@@ -256,7 +255,6 @@ class CarbonEmissionData(QWidget):
             }
 
             QScrollArea {
-
                 background-color: transparent;
                 outline: none;
             }
@@ -338,38 +336,35 @@ class CarbonEmissionData(QWidget):
                 border-color: #606060;
             }
 
-            /* Styling for component_first_widget (the container for the nested scroll area) */
             #component_first_widget {
                 background-color: transparent;
-                margin-top: 10px; /* Add some space above each component block */
+                margin-top: 10px;
             }
 
-            #component_first_scroll_content_widget { /* This now applies directly to ComponentWidget itself */
+            #component_first_scroll_content_widget {
                 background-color: #FFFFFF;
                 padding: 10px;
-
                 border-radius: 8px;
             }
 
-            /* Updated Styling for navigation buttons to match the Add Material/Component buttons */
             QPushButton#nav_button {
-                background-color: #FFFFFF; /* White background */
-                border: 1px solid #E0E0E0; /* Light grey border */
-                border-radius: 8px; /* Slightly more rounded corners */
-                color: #3F3E5E; /* Dark text color */
-                padding: 6px 15px; /* Increased padding */
+                background-color: #FFFFFF;
+                border: 1px solid #E0E0E0;
+                border-radius: 8px;
+                color: #3F3E5E;
+                padding: 6px 15px;
                 text-align: center;
-                min-width: 80px; /* Ensure a minimum width */
+                min-width: 80px;
             }
             QPushButton#nav_button:hover {
-                background-color: #F8F8F8; /* Very subtle light grey on hover */
-                border-color: #C0C0C0; /* Darker border on hover */
+                background-color: #F8F8F8;
+                border-color: #C0C0C0;
             }
             QPushButton#nav_button:pressed {
-                background-color: #E8E8E8; /* Darker grey on pressed */
-                border-color: #A0A0A0; /* Even darker border */
+                background-color: #E8E8E8;
+                border-color: #A0A0A0;
             }
-            /* Styling for QComboBox */
+
             QComboBox {
                 border: 1px solid #DDDCE0;
                 border-radius: 10px;
@@ -398,7 +393,6 @@ class CarbonEmissionData(QWidget):
                 background-color: #FDEFEF;
             }
 
-            /* Styling for material grid elements */
             #MaterialGridLabel {
                 font-weight: bold;
                 color: #3F3E5E;
@@ -415,24 +409,23 @@ class CarbonEmissionData(QWidget):
                 border: 1px solid #DDDCE0;
                 background-color: #FFFFFF;
             }
-            /* IMPROVED CSS FOR ADD MATERIAL/COMPONENT BUTTONS */
+
             QPushButton#add_material_button, QPushButton#add_component_button {
-                background-color: #FFFFFF; /* White background */
-                border: 1px solid #E0E0E0; /* Light grey border */
-                border-radius: 8px; /* Slightly more rounded corners */
-                color: #3F3E5E; /* Dark text color */
-                padding: 6px 15px; /* Increased padding */
+                background-color: #FFFFFF;
+                border: 1px solid #E0E0E0;
+                border-radius: 8px;
+                color: #3F3E5E;
+                padding: 6px 15px;
                 text-align: center;
             }
             QPushButton#add_material_button:hover, QPushButton#add_component_button:hover {
-                background-color: #F8F8F8; /* Very subtle light grey on hover */
-                border-color: #C0C0C0; /* Darker border on hover */
+                background-color: #F8F8F8;
+                border-color: #C0C0C0;
             }
             QPushButton#add_material_button:pressed, QPushButton#add_component_button:pressed {
-                background-color: #E8E8E8; /* Darker grey on pressed */
-                border-color: #A0A0A0; /* Even darker border */
+                background-color: #E8E8E8;
+                border-color: #A0A0A0;
             }
-            /* END IMPROVED CSS */
         """)
 
         self.setObjectName("central_panel_widget")
@@ -449,16 +442,15 @@ class CarbonEmissionData(QWidget):
         self.scroll_area.setWidget(scroll_content_widget)
 
         self.scroll_content_layout = QVBoxLayout(scroll_content_widget)
-        self.scroll_content_layout.setContentsMargins(0,0,0,0)
-        self.scroll_content_layout.setSpacing(0)
+        self.scroll_content_layout.setContentsMargins(15, 15, 15, 15)  # Added margins
+        self.scroll_content_layout.setSpacing(15)  # Increased spacing
 
         # Create the navigation buttons layout
         self.button_h_layout = QHBoxLayout()
         self.button_h_layout.setSpacing(10)
-        self.button_h_layout.setContentsMargins(10,10,10,10)
+        self.button_h_layout.setContentsMargins(0, 10, 0, 0)  # Top margin only
 
-        # Adjust these stretch factors to control the position
-        self.button_h_layout.addStretch(6) # Larger stretch on the left to push it more right
+        self.button_h_layout.addStretch()
 
         back_button = QPushButton("Back")
         back_button.setObjectName("nav_button")
@@ -471,31 +463,26 @@ class CarbonEmissionData(QWidget):
         next_button.clicked.connect(lambda: self.next.emit(KEY_CARBON_EMISSION))
         self.button_h_layout.addWidget(next_button)
 
-
         # Add the initial component layout
         self.add_component_layout()
-        
 
-        # Add initial spacing before the navigation buttons
+        # Add navigation buttons
         self.scroll_content_layout.addLayout(self.button_h_layout)
 
-        # --- Add a corner spacer to the scroll_content_layout ---
-        self.button_h_layout.addSpacerItem(QSpacerItem(20, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        # Add vertical spacer at the end
         self.scroll_content_layout.addSpacerItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         left_panel_vlayout.addWidget(self.scroll_area)
-
 
     def add_component_layout(self):
         new_component = ComponentWidget(data=self.material_store, parent=self)
         self.component_widgets.append(new_component)
 
-        # Temporarily remove button_h_layout and the vertical spacer for insertion
-        # Find the vertical spacer and remove it if it exists
+        # Remove spacer and button layout temporarily
         vertical_spacer_item = None
         for i in range(self.scroll_content_layout.count()):
             item = self.scroll_content_layout.itemAt(i)
-            if isinstance(item, QSpacerItem) and item.sizeHint().width() == 0: # This identifies the vertical spacer
+            if isinstance(item, QSpacerItem) and item.sizeHint().width() == 0:
                 vertical_spacer_item = self.scroll_content_layout.takeAt(i)
                 break
 
@@ -508,13 +495,12 @@ class CarbonEmissionData(QWidget):
         # Re-add the navigation buttons layout
         self.scroll_content_layout.addLayout(self.button_h_layout)
         
-        # Re-add the vertical spacer if it was found
+        # Re-add the vertical spacer
         if vertical_spacer_item:
             self.scroll_content_layout.addItem(vertical_spacer_item)
 
         self.scroll_area.widget().updateGeometry()
         self.scroll_area.widget().adjustSize()
-
 
     def remove_component_layout(self, component_to_remove):
         if component_to_remove in self.component_widgets:
@@ -524,7 +510,6 @@ class CarbonEmissionData(QWidget):
             self.scroll_area.widget().updateGeometry()
             self.scroll_area.widget().adjustSize()
 
-
     def expand_scroll_area(self):
         self.central_widget.layout().invalidate()   
 
@@ -533,34 +518,9 @@ class CarbonEmissionData(QWidget):
         self.setParent(None)
 
     def collect_data(self):
+        from pprint import pprint
         data = self.component_widgets[0].collect_data()
-        print("Collected Data from UI:",data)     
+        print("\nCollected Data from Carbon Emission UI:")
+        pprint(data)
+        # Insert Carbon Emission Data
         self.database_manager.insert_carbon_emission_data(data)
-
-
-#----------------Standalone-Test-Code--------------------------------
-
-# class MyMainWindow(QMainWindow):
-#     def __init__(self):
-#         super().__init__()
-
-#         self.setStyleSheet("border: none")
-
-#         self.central_widget = QWidget()
-#         self.central_widget.setObjectName("central_widget")
-#         self.setCentralWidget(self.central_widget)
-
-#         self.main_h_layout = QHBoxLayout(self.central_widget)
-#         self.main_h_layout.addStretch(1)
-
-#         self.main_h_layout.addWidget(CarbonEmissionData(), 2)
-
-#         self.setWindowState(Qt.WindowMaximized)
-
-
-# if __name__ == "__main__":
-#     QCoreApplication.setAttribute(Qt.AA_DontShowIconsInMenus, False)
-#     app = QApplication(sys.argv)
-#     window = MyMainWindow()
-#     window.show()
-#     sys.exit(app.exec())
