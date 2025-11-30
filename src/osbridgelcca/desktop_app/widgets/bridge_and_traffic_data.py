@@ -17,6 +17,8 @@ class BridgeAndTrafficData(QWidget):
         self.database_manager = database
         self.data = bridge_traffic_data.get(KEY_BRIDGE_TRAFFIC)
         self.widgets = []
+        self.vehicle_distribution = []
+        self.accident_distribution = []
 
         self.text_box_width = 200
         self.setStyleSheet("""
@@ -383,9 +385,9 @@ class BridgeAndTrafficData(QWidget):
         vehicle_layout.addWidget(per_dist_label, 0, 1)
 
         vehicles = [
-            "Minor Injury",
-            "Major Injury",
-            "Fatal"
+            KEY_MINOR_INJURY,
+            KEY_MAJOR_INJURY,
+            KEY_FATAL
         ]
 
         for i, vehicle in enumerate(vehicles):
@@ -394,6 +396,7 @@ class BridgeAndTrafficData(QWidget):
             v_label.setAlignment(Qt.AlignCenter)
             v_label.setStyleSheet("background-color: #FFFFFF; border: 1px solid #FFFFFF; border-radius: 10px; padding: 10px 10px 10px 1px;")
             v0_input = QLineEdit()
+            self.vehicle_distribution.append(v0_input)
             v0_input.setFixedWidth(self.text_box_width*2)
             v0_input.setStyleSheet("""
                 QLineEdit {
@@ -463,14 +466,14 @@ class BridgeAndTrafficData(QWidget):
         vehicle_layout.addWidget(per_dist_label, 0, 2)
 
         vehicles = [
-            "Two Wheeler",
-            "Small Car",
-            "Big Car",
-            "Ordinary Bus",
-            "Deluxe Bus",
-            "LCV",
-            "MCV",
-            "HCV"
+            KEY_TWO_WHEELER,
+            KEY_SMALL_CARS,
+            KEY_BIG_CARS,
+            KEY_ORDINARY_BUS,
+            KEY_DELUXE_BUS,
+            KEY_LCV,
+            KEY_MCV,
+            KEY_HCV
         ]
         self.average_daily_traffic = []
 
@@ -492,6 +495,7 @@ class BridgeAndTrafficData(QWidget):
                 }
             """)
             v1_input = QLineEdit()
+            self.vehicle_distribution.append(v1_input)
             v1_input.setFixedWidth(self.text_box_width)
             v1_input.setStyleSheet("""
                 QLineEdit {
@@ -568,21 +572,44 @@ class BridgeAndTrafficData(QWidget):
         }
         # Collect other data
         data = {
-            KEY_ALTER_ROAD_CARRIAGEWAY: self.widgets[0].currentText(),
+            KEY_ALTER_ROAD_CARRIAGEWAY: self.widgets[0].currentText(), # String
             KEY_ADDIT_REROUTING_DISTANCE: 0.0 if not self.widgets[1].text() else float(self.widgets[1].text()),
-            KEY_ADDIT_TRAVEL_TIME: 0.0 if not self.widgets[2].text() else float(self.widgets[2].text()),
+            KEY_ADDIT_TRAVEL_TIME: 0.0 if not self.widgets[2].text() else float(self.widgets[2].text())/60, # hours
             KEY_ROAD_ROUGHNESS: self.widgets[3].currentText(),
             KEY_ROAD_RISE: self.widgets[4].currentText(),
             KEY_ROAD_FALL: self.widgets[5].currentText(),
             KEY_ROAD_TYPE: self.widgets[6].currentText(),
             KEY_CRASH_RATE: 0.0 if not self.widgets[7].text() else float(self.widgets[7].text())
         }
-        print("\nCollected Traffic Composition Data from UI:")
+        # Vehicle Distribution
+        vehicle_dist = {
+            KEY_TWO_WHEELER: 0.0 if not self.vehicle_distribution[0].text() else float(self.vehicle_distribution[0].text()),
+            KEY_SMALL_CARS: 0.0 if not self.vehicle_distribution[1].text() else float(self.vehicle_distribution[1].text()),
+            KEY_BIG_CARS: 0.0 if not self.vehicle_distribution[2].text() else float(self.vehicle_distribution[2].text()),
+            KEY_ORDINARY_BUS: 0.0 if not self.vehicle_distribution[3].text() else float(self.vehicle_distribution[3].text()),
+            KEY_DELUXE_BUS: 0.0 if not self.vehicle_distribution[4].text() else float(self.vehicle_distribution[4].text()),
+            KEY_LCV: 0.0 if not self.vehicle_distribution[5].text() else float(self.vehicle_distribution[5].text()),
+            KEY_MCV: 0.0 if not self.vehicle_distribution[6].text() else float(self.vehicle_distribution[6].text()),
+            KEY_HCV: 0.0 if not self.vehicle_distribution[7].text() else float(self.vehicle_distribution[7].text())
+        }
+        # Accident distribution
+        accident_dist = {
+            KEY_MINOR_INJURY: 0.0 if not self.accident_distribution[0].text() else float(self.accident_distribution[0].text()),
+            KEY_MAJOR_INJURY: 0.0 if not self.accident_distribution[1].text() else float(self.accident_distribution[1].text()),
+            KEY_FATAL: 0.0 if not self.accident_distribution[2].text() else float(self.accident_distribution[2].text())
+        }
+        print("\nCollected Traffic Composition Data from UI:\nDaily Avg Traffic...\n")
         pprint(traffic_data)
+        print("\nUI Data...\n")
+        pprint(data)
+        print("\nAccident Distribution...\n")
+        pprint(accident_dist)
 
         # Save UI Data to Backend
         self.database_manager.traffic_data = data
         self.database_manager.daily_average_traffic_data = traffic_data
+        self.database_manager.accident_distribution = accident_dist
+        self.database_manager.vehicle_distribution = vehicle_dist
 
         # Carbon Emission due to Rerouting during Initial Construction
         self.database_manager.init_carbon_emission_rerouting()

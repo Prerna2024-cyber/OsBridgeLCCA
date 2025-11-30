@@ -1,6 +1,5 @@
 import sqlite3
 from typing import List, Dict, Tuple
-from .data import *
 from .cost_component import ( BearingAndExpansionJointReplacementCost, CarbonEmissionDueToRerouting, DemolitionCarbonCost, DemolitionCarbonReroutingCost,
                                 InitialConstructionCost, MajorInspectionCost, MajorRepairCost,
                                 MajorRepairRelCarbonEmissionCost, TimeCost, RoadUserCost,
@@ -9,6 +8,9 @@ from .cost_component import ( BearingAndExpansionJointReplacementCost, CarbonEmi
                                 DemolitionCost, RecyclingCost, ReconstructionCost,
                                 PeriodicMaintenanceCarbonCost
 )
+from .data import *
+from .IRC_SP_30 import IRC_SP_30
+
 
 class DatabaseManager:
     """Database manager for Structure Works Data"""
@@ -21,17 +23,72 @@ class DatabaseManager:
             db_path: Path to the database file
             recreate: If True, delete existing database and create fresh. If False, use existing database.
         """
+
+        # Instantiate IRC_SP_30
+        self.irc_sp_30 = IRC_SP_30()
+
         self.db_path = db_path
         self.conn = None
         self.create_database(recreate=recreate)
 
         # Data from UI
-        self.financial_data = {}
+        self.financial_data = {
+            KEY_DISCOUNT_RATE_IA: 0.067,
+            KEY_INFLATION_RATE: 0.0515,
+            KEY_INTEREST_RATE: 0.0775,
+            KEY_INVESTMENT_RATIO: 0.5,
+            KEY_DESIGN_LIFE: 50,
+            KEY_CONSTR_TIME: 5,
+            KEY_ANALYSIS_PERIOD: 50,
+        }
         self.carbon_emission_cost_data = {}
-        self.daily_average_traffic_data = {}
+        self.daily_average_traffic_data = {
+            KEY_TWO_WHEELER: 100,
+            KEY_SMALL_CARS: 100,
+            KEY_ORDINARY_BUS: 100,
+            KEY_DELUXE_BUS: 100,
+            KEY_LCV: 100,
+            KEY_HCV: 100,
+            KEY_MCV: 100
+        }
         self.maintainance_and_repair_data = {}
         self.demolition_and_recycling_data = {}
-        self.traffic_data = {}
+        self.traffic_data = {
+            KEY_ALTER_ROAD_CARRIAGEWAY: "Two Lane Roads", # String
+            KEY_ADDIT_REROUTING_DISTANCE: 6.0,
+            KEY_ADDIT_TRAVEL_TIME: 1.5, # hours
+            KEY_ROAD_ROUGHNESS: 3000, # String
+            KEY_ROAD_RISE: 2000, # String
+            KEY_ROAD_FALL: 1000, # String
+            KEY_ROAD_TYPE: "Urban Road", # String
+            KEY_CRASH_RATE: 30.0
+        }
+        self.accident_distribution = {
+            KEY_MINOR_INJURY: 60.0,
+            KEY_MAJOR_INJURY: 20.0,
+            KEY_FATAL: 20.0
+        }
+        self.vehicle_distribution = {
+            KEY_TWO_WHEELER: 5.0,
+            KEY_SMALL_CARS: 10.0,
+            KEY_BIG_CARS: 50.0,
+            KEY_ORDINARY_BUS: 10.0,
+            KEY_DELUXE_BUS: 10.0,
+            KEY_LCV: 5.0,
+            KEY_MCV: 5.0,
+            KEY_HCV: 5.0
+        }
+
+        # Constants
+        self.PETROL_DIESEL_RATIO_SM_CARS = {
+            KEY_PETROL: 0.7,
+            KEY_DIESEL: 0.3
+        }
+        self.PETROL_DIESEL_RATIO_BG_CARS = {
+            KEY_PETROL: 0.3,
+            KEY_DIESEL: 0.7
+        }
+        self.WORK_ZONE_MULTIPLIER = 1.0
 
         # Total Costs
         self.results = {
@@ -871,57 +928,118 @@ class DatabaseManager:
 
     #==========End-Of-Life-Stage-Cost-End====================
 
-    # 4. Called on next from bridge_and_traffic_data.py
-    def calculate_irc_road_cost(self, data: List) -> float:
-        # fetch Construction time
-        cursor = self.conn.cursor()
-        cursor.execute('''
-            SELECT time_of_project
-            FROM financial_data
-        ''')
-        construction_time = float(cursor.fetchone()[0])
-        
-        total_road_user_cost = 0
-        lanes = data[0]
-        roughness = data[2]
-        rf = data[3]
-
-        key = ["Car", "Bus", "HCV", "MCV", "LCV"]
-        for vehicle in key:
-            count = int(data[6+key.index(vehicle)])
-            key_vehicle = (vehicle, lanes, roughness, rf)
-            cost_per_km = self.IRC_ROAD_COSTS_DATA.get(key_vehicle, "")
-            if cost_per_km:
-                ct = construction_time * float(data[1])
-                road_user_cost_component = RoadUserCost(
-                    vehicles_affected=count,
-                    vehicle_operation_cost=cost_per_km,
-                    construction_time=ct
-                )
-                total_road_user_cost += road_user_cost_component.calculate_cost()
-            else:
-                print(f"No Grand_Cost found for {vehicle}, {lanes}, {roughness}, {rf}")
-        
-        print("\nTotal Road User Cost:", total_road_user_cost)  # INR
-        return total_road_user_cost
+    #==========IRC-Road_User-Cost-Start======================
     
-    # 5. Called on next from bridge_and_traffic_data.py
-    def additional_carbon_emission_cost(self, data: List) -> float:
-        total_vehicles_affected = 0
-        for i in range(6,11):
-            total_vehicles_affected += float(data[i])
+    #==========2. Accident-Related-Cost-Start==========
 
-        reroute_distance = float(data[1])
+    #==========2.1 Human-Injury-Cost-Start==========
+    
+    def _no_of_accidents(self) -> float: # Per Day
+        crash_rate = self.traffic_data.get(KEY_CRASH_RATE) 
+        adt = self._get_total_traffic()
+        multiplier = self.WORK_ZONE_MULTIPLIER
+        rerouting_dist = self.traffic_data.get(KEY_ADDIT_REROUTING_DISTANCE)
+        return crash_rate * adt * multiplier * rerouting_dist * (10**-6)
+    
+    def _accident_in_constr_time(self) -> float:
+        no_of_accidents = self._no_of_accidents()
+        month = self.financial_data.get(KEY_CONSTR_TIME) * 12
+        days = self.WORKING_DAYS_IN_MONTH * month
+        return no_of_accidents * days
 
-        additional_carbon_emission_component = AdditionalCarbonEmissionCost(
-            vehicles_affected=total_vehicles_affected,
-            reroute_distance=reroute_distance,
-            co2_emission_per_km=0.1213,
-            carbon_cost=self.carbon_cost
-        )
-        print("\nAdditional Carbon Emission Cost:", additional_carbon_emission_component.calculate_cost())  # INR
-        return additional_carbon_emission_component.calculate_cost()
+    def _wpi_adj_economic_cost_of_accident_category(self, accident_category:str) -> float:
+        wpi = self.irc_sp_30._get_wpi(table=TABLE_WPI_MEDICAL,
+                                       column=accident_category,
+                                       current_year=2024, # Hard Coded
+                                       base_year=BASE_YEAR)
+        economic_cost_of_accident = self.irc_sp_30._get_accident_cost(accident_category)
+        return economic_cost_of_accident * wpi
 
+    def _count_accident_type(self, accident_category:str) -> float:
+        accident_dist = self.accident_distribution.get(accident_category)
+        return self._accident_in_constr_time() * accident_dist
+
+    def _injury_cost(self, accident_category:str) -> float:
+        cost = self._wpi_adj_economic_cost_of_accident_category(accident_category)
+        return cost * self._count_accident_type(accident_category)
+    
+    def total_human_injury_cost(self) -> float:
+        cost = 0.0
+        for injury in [KEY_MINOR_INJURY, KEY_MAJOR_INJURY, KEY_FATAL]:
+            cost += self._injury_cost(injury)
+        return cost
+    #==========2.1 Human-Injury-Cost-End==========
+
+    #==========2.2 Vehicle-Damage-Cost-Start==========
+    def _wpi_adj_economic_cost_of_quantum_damage(self, vehicle_category:str) -> float:
+        wpi = self.irc_sp_30._get_wpi(table=TABLE_VOT,
+                                       column=vehicle_category,
+                                       current_year=2024, # Hard Coded
+                                       base_year=BASE_YEAR)
+        economic_cost_of_quantum_damage = self.irc_sp_30._get_vehicle_damage_cost(vehicle_category)
+        return economic_cost_of_quantum_damage * wpi
+    
+    def _count_vehicle_damage(self, vehicle_category:str) -> float:
+        vehicle_dist = self.vehicle_distribution.get(vehicle_category)
+        return self._accident_in_constr_time() * vehicle_dist
+
+    def _vehicle_damage_cost(self, vehicle_category:str):
+        cost = self._wpi_adj_economic_cost_of_quantum_damage(vehicle_category)
+        return cost * self._count_vehicle_damage(vehicle_category)
+
+    def total_vehicle_damage_cost(self) -> float:
+        cost = 0.0
+        for vehicle in [KEY_TWO_WHEELER,
+                        KEY_SMALL_CARS,
+                        KEY_BIG_CARS,
+                        KEY_ORDINARY_BUS,
+                        KEY_DELUXE_BUS,
+                        KEY_LCV,
+                        KEY_HCV,
+                        KEY_MCV]:
+            cost += self._vehicle_damage_cost(vehicle)
+        return cost
+    #==========2.2 Vehicle-Damage-Cost-End==========
+
+    def accident_related_cost(self) -> float:
+        return self.total_human_injury_cost() + self.total_vehicle_damage_cost()
+    #==========2. Accident-Related-Cost-End==========
+
+    #==========3. VOT-Start==========================
+    def _wpi_adj_vot(self, vehicle_type:str, type_of_road:str) -> float:
+        wpi = self.irc_sp_30._get_wpi(table=TABLE_VOT,
+                            column=vehicle_type,
+                            current_year=2024, # Hard Coded
+                            base_year=BASE_YEAR)
+        time_value = self.irc_sp_30._get_vot(column=type_of_road,
+                                             vehicle_type=vehicle_type)
+        return time_value * wpi
+    
+    def _vot_per_day(self, vehicle_type: str, type_of_road: str) -> float:
+        time_value = self._wpi_adj_vot(vehicle_type=vehicle_type,
+                                       type_of_road=type_of_road)
+        vehicle_per_day = self.daily_average_traffic_data.get(vehicle_type)
+        addit_travel_time = self.traffic_data.get(KEY_ADDIT_TRAVEL_TIME)
+        occupancy = self.irc_sp_30._get_occupancy(vehicle_type=vehicle_type)
+        return time_value * vehicle_per_day * addit_travel_time * occupancy
+
+    def vot_per_year(self) -> float:
+        month = self.financial_data.get(KEY_CONSTR_TIME) * 12
+        days = self.WORKING_DAYS_IN_MONTH * month
+        road_type = self.traffic_data.get(KEY_ALTER_ROAD_CARRIAGEWAY)
+
+        total_vot = 0.0
+        for vehicle_type in self.daily_average_traffic_data.keys():
+            total_vot += self._vot_per_day(vehicle_type=vehicle_type,
+                                       type_of_road=road_type)
+
+        return total_vot * days
+
+    #==========3. VOT-End============================
+
+    
+
+    #==========IRC-Road_User-Cost-End====================
 
     # 9. Repair and Rehabilitation Cost Calculation
     def repair_and_rehabilitation_cost(self, total_initial_construction_cost: float, data: List) -> float:
@@ -972,6 +1090,10 @@ class DatabaseManager:
         print("\nReconstruction Cost:", reconstruction_result)  # INR
         return reconstruction_result
     
-    
+if __name__ == "__main__":
+    d = DatabaseManager()
+    print("vot=",d.vot_per_year())
+    print("acccident_cost=",d.accident_related_cost())
+
         
         

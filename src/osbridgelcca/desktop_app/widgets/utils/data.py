@@ -1,3 +1,26 @@
+# WPI Calculation
+BASE_YEAR = 2019
+KEY_PASSENGER_COST = "Passenger Cost"
+KEY_CREW_COST = "Crew Cost"
+
+# Keys for database
+TABLE_WPI_MEDICAL = "wpi_medical_accessories"
+TABLE_VOT = "wpi_vot"
+COL_ACCIDENT_CATEGORY = "Category_of_Accident"
+COL_COST_INR = "Economic_Cost_INR"
+COL_TYPE_OF_VEHICLE = "Type_of_Vehicle"
+COL_YEAR = "Year"
+
+KEY_SINGLE_LANE_ROAD = "Single Lane Roads"
+KEY_INTERMEDIATE_LANE_ROAD = "Intermediate Lane Roads"
+KEY_TWO_LANE_ROAD = "Two Lane Roads"
+KEY_FOUR_LANE_DIVIDED_ROAD = "Four Lane Divided Roads"
+KEY_SIX_LANE_DIVIDED_ROAD = "Six Lane Divided Roads"
+KEY_FOUR_LANE_DIVIDED_EXPRESSWAY = "Four Lane Divided Expressways"
+KEY_SIX_LANE_DIVIDED_EXPRESSWAY = "Six Lane Divided Expressways"
+KEY_EIGHT_LANE_DIVIDED_URBAN_EXPRESSWAY = "Eight Lane Divided Urban Expressways"
+COL_OCCUPANCY = "Occupancy"
+
 # Keys for All Type of Tabs
 KEY_STRUCTURE_WORKS_DATA = "Structure Works Data"
 KEY_FOUNDATION = "Foundation"
@@ -40,6 +63,15 @@ KEY_DELUXE_BUS = "Deluxe Buses"
 KEY_LCV = "LCV"
 KEY_HCV = "HCV"
 KEY_MCV = "MCV"
+KEY_MINOR_INJURY = "Minor Injury"
+KEY_MAJOR_INJURY = "Major Injury"
+KEY_FATAL = "Fatal"
+
+KEY_PETROL = "Petrol"
+KEY_DIESEL = "Diesel"
+KEY_ENGINE_OIL = "Engine Oil"
+KEY_OTHER_OIL = "Other Oil"
+KEY_GREASE = "Grease"
 
 KEY_LANES = "lanes"
 KEY_ROADROUGHNESS = "road_roughness"
@@ -394,14 +426,14 @@ bridge_traffic_data = {
     KEY_BRIDGE_TRAFFIC: {
         KEY_LANES: {
             KEY_OPTIONS: [
-                "Single Lane Roads",
-                "Intermediate Lane Roads",
-                "Two Lane Roads",
-                "Four Lane Divided Roads",
-                "Six Lane Divided Roads",
-                "Four Lane Divided Expressways",
-                "Six Lane Divided Expressways",
-                "Eight Lane Divided Urban Expressways"
+                KEY_SINGLE_LANE_ROAD,
+                KEY_INTERMEDIATE_LANE_ROAD,
+                KEY_TWO_LANE_ROAD,
+                KEY_FOUR_LANE_DIVIDED_ROAD,
+                KEY_SIX_LANE_DIVIDED_ROAD,
+                KEY_FOUR_LANE_DIVIDED_EXPRESSWAY,
+                KEY_SIX_LANE_DIVIDED_EXPRESSWAY,
+                KEY_EIGHT_LANE_DIVIDED_URBAN_EXPRESSWAY
             ],
            
         },
