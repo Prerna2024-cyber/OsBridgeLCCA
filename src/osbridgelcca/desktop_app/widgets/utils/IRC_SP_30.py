@@ -1,5 +1,6 @@
 import pandas as pd
-from .data import *
+from data import *
+import json
 
 class IRC_SP_30:
     def __init__(self):
@@ -237,6 +238,86 @@ class IRC_SP_30:
             return float(self.vot_of_passengers.loc[vehicle_type, COL_OCCUPANCY])
         except KeyError:
             raise ValueError(f"Invalid vehicle type: '{vehicle_type}'")  
+        
+    def getWPI(self, year: int):
+        """
+        Get the WPI of all relevant items for a given year, relative to BASE_YEAR.
+
+        Returns:
+            dict: Nested dictionary of WPI values (current_year / BASE_YEAR)
+        """
+
+        wpi_dict = {"year": year, "WPI": {}}
+
+        def calc_ratio(df, col):
+            try:
+                return float(df.loc[year, col] / df.loc[BASE_YEAR, col])
+            except KeyError:
+                return None
+
+        # ------------------------------------------------
+        # 1. Fuel Costs
+        # ------------------------------------------------
+        wpi_dict["WPI"]["fuelCost"] = {
+            col: calc_ratio(self.voc_fuel_costs, col)
+            for col in self.voc_fuel_costs.columns
+        }
+
+        # ------------------------------------------------
+        # 2. Vehicle Costs – separated categories
+        # ------------------------------------------------
+        wpi_dict["WPI"]["vehicleCost"] = {
+            "propertyDamage": {
+                col: calc_ratio(self.wpi_property_damage, col)
+                for col in self.wpi_property_damage.columns
+            },
+            "tyreCost": {
+                col: calc_ratio(self.tyre_costs, col)
+                for col in self.tyre_costs.columns
+            },
+            "spareParts": {
+                col: calc_ratio(self.spare_parts_costs, col)
+                for col in self.spare_parts_costs.columns
+            },
+            "fixedDepreciation": {
+                col: calc_ratio(self.fixed_depreciation_costs, col)
+                for col in self.fixed_depreciation_costs.columns
+            }
+        }
+
+        # ------------------------------------------------
+        # 3. Commodity Holding Cost
+        # ------------------------------------------------
+        wpi_dict["WPI"]["commodityHoldingCost"] = {
+            col: calc_ratio(self.commodity_holding_cost, col)
+            for col in self.commodity_holding_cost.columns
+        }
+
+        # ------------------------------------------------
+        # 4. Passenger & Crew Costs
+        # ------------------------------------------------
+        wpi_dict["WPI"]["passengerCrewCost"] = {
+            col: calc_ratio(self.passenger_crew_costs, col)
+            for col in self.passenger_crew_costs.columns
+        }
+
+        # ------------------------------------------------
+        # 5. Medical Accessories (Fatal / Major / Minor)
+        # ------------------------------------------------
+        wpi_dict["WPI"]["medicalCost"] = {
+            col: calc_ratio(self.wpi_medical_accessories, col)
+            for col in self.wpi_medical_accessories.columns
+        }
+
+        # ------------------------------------------------
+        # 6. Travel Time (VOT)
+        # ------------------------------------------------
+        wpi_dict["WPI"]["votCost"] = {
+            col: calc_ratio(self.wpi_vot, col)
+            for col in self.wpi_vot.columns
+        }
+
+        return wpi_dict
 
 if __name__ == "__main__":
     irc_sp_30 = IRC_SP_30()
@@ -245,3 +326,4 @@ if __name__ == "__main__":
     print(irc_sp_30.wpi_medical_accessories)
     print(irc_sp_30.wpi_vot)
     print(irc_sp_30.vot_of_passengers)
+    print(irc_sp_30.getWPI(2024)) # add this
