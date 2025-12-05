@@ -141,8 +141,8 @@ class IRC_SP_30:
         # WPI: Passenger and Crew Costs
         self.passenger_crew_costs = pd.DataFrame({
             COL_YEAR: [2019, 2020, 2021, 2022, 2023, 2024],
-            KEY_PASSENGER_COST: [138.58, 147.91, 155.33, 166.94, 176.38, 184.27],
-            KEY_CREW_COST: [118.07, 131.77, 145.91, 159.05, 160.28, 164.18]
+            KEY_PASSENGER_COST: [121.2, 121.8, 135, 151.3, 151.3, 154],
+            KEY_CREW_COST: [121.2, 121.8, 135, 151.3, 151.3, 154]
         }).set_index(COL_YEAR)
     
     # ==================== Get Methods ====================
