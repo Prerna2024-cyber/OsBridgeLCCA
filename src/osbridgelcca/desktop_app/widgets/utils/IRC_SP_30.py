@@ -1,5 +1,5 @@
 import pandas as pd
-from data import *
+from .data import *
 import json
 
 class IRC_SP_30:

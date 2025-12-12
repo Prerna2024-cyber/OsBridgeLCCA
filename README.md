@@ -29,7 +29,7 @@ OsBridgeLCCA (Open Source Bridge Life Cycle Cost Assessment) is an open-source s
 ## Installation
 
 ### Prerequisites
-- **Miniconda** (Recommended for environment management)
+<!-- - **Miniconda** (Recommended for environment management) -->
 - **Python 3.9+**
 - **Git**
 
@@ -59,7 +59,10 @@ python scripts/verify_installation.py
 
 ### 🖥️ **Running the Desktop Application**
 ```sh
-python src/osbridgelcca/desktop/app.py
+cd ./src/osbridgelcca/desktop_app/
+```
+```sh
+python app.py
 ```
 
 ### 🌐 **Running the Web Application**
