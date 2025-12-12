@@ -1,5 +1,5 @@
-from voc.utils import carriage_way_standards
-import voc.utils.constants as constants
+from utils import carriage_way_standards
+from utils import constants
 
 def validate_input(vehicle_input):
     errors = []

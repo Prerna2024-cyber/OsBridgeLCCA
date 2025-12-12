@@ -1,5 +1,5 @@
-from voc import core
-import voc.congestion.core as co
+from .voc import core
+from .voc.congestion import core as congestion_core
 
 vc = 0.8854
 wpi = {'year': 2024,
@@ -106,6 +106,11 @@ vehicle_input = {
     }
 }
 
-a = core.main(vehicle_input, wpi)
-calculate_total_adjusted_costs = co.calculate_total_adjusted_costs(a, vc, vehicle_input)
-print(calculate_total_adjusted_costs)
+def calc_voc(inputs: dict,
+             all_wpi: dict,
+             vehicle_cost: float) -> dict:
+    """
+    return calculate_total_adjusted_costs
+    """
+    val = core.main(inputs, all_wpi)
+    return congestion_core.calculate_total_adjusted_costs(val, vehicle_cost, vehicle_input)

@@ -1,6 +1,6 @@
-from voc.utils.input_validation import validate_input
-from voc.vehicle_types import big_cars, buses, hcv, lcv, mcv, small_cars, two_wheeler
-import voc.utils.post_processor as pp
+from .utils.input_validation import validate_input
+from .vehicle_types import big_cars, buses, hcv, lcv, mcv, small_cars, two_wheeler
+from .utils import post_processor as pp
 import sys
 
 # Map vehicle_info keys to their model modules

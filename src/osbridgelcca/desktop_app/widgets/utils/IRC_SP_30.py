@@ -1,6 +1,5 @@
 import pandas as pd
-from data import *
-import json
+from .data import *
 
 class IRC_SP_30:
     def __init__(self):

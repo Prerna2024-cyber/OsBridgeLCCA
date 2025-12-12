@@ -11,6 +11,8 @@ from .cost_component import ( BearingAndExpansionJointReplacementCost, CarbonEmi
 from .data import *
 from .IRC_SP_30 import IRC_SP_30
 
+# from .core.main import calc_voc
+
 
 class DatabaseManager:
     """Database manager for Structure Works Data"""
@@ -1036,6 +1038,34 @@ class DatabaseManager:
         return total_vot * days
 
     #==========3. VOT-End============================
+
+    def total_road_user_cost(self) -> float:
+        vot = self.vot_per_year()
+        accident_cost = self.accident_related_cost()
+
+
+        ui_inputs = {
+            "vehicle_info": self.daily_average_traffic_data,
+            # "carriageway_width": 10, ### ONLY REQUIRED WHEN "lane_type" = "EW"
+            "rg_roughness_factor": 2000,
+            "fl_fall_factor": 0,
+            "rs_rise_factor": 0,
+            "lane_type": "2L",
+            "power_weight_ratio_pwr": {
+                "mcv": 8,
+                "hcv": 7.22
+            }
+        }
+
+        
+
+        voc = calc_voc(
+            inputs=ui_inputs,
+            all_wpi=self.irc_sp_30.getWPI(),
+            vehicle_cost=23
+        )
+
+
 
     
 
